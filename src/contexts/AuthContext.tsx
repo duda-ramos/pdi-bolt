@@ -143,9 +143,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 2. Criar perfil na tabela profiles se o usuário foi criado
       if (data.user) {
         try {
-          // Wait longer for the auth state to be properly set
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
           await createUserProfile(data.user.id, email, {
             nome,
             role
@@ -155,9 +152,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (profileError) {
           console.error('Error creating user profile:', profileError);
           
-          // Don't block the signup flow if profile creation fails
-          // User can still confirm email and login later
-          console.log('Profile creation failed, but user account was created. User can login after email confirmation.');
+          // If profile creation fails, still allow signup to complete
+          console.log('Profile creation failed, but user account was created.');
         }
       }
 
@@ -167,7 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(false);
         return { 
           success: true, 
-          message: 'Conta criada com sucesso! Verifique seu email para confirmar a conta. Após a confirmação, faça login para completar seu perfil se necessário.',
+          message: 'Conta criada com sucesso! Verifique seu email (incluindo spam) para confirmar a conta. Após clicar no link de confirmação, você poderá fazer login.',
           needsConfirmation: true 
         };
       }

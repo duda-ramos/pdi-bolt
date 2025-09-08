@@ -53,7 +53,7 @@ const LoginForm: React.FC = () => {
       } else if (errorMessage.includes('User already registered')) {
         setError('Este email já está cadastrado. Tente fazer login.');
       } else if (errorMessage.includes('Email not confirmed')) {
-        setError('Email não confirmado. Verifique sua caixa de entrada.');
+        setError('Email não confirmado. Verifique sua caixa de entrada (incluindo spam) e clique no link de confirmação enviado pelo Supabase.');
       } else if (errorMessage.includes('Too many requests')) {
         setError('Muitas tentativas. Tente novamente em alguns minutos.');
       } else {

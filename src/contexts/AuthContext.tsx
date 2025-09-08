@@ -10,7 +10,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
+      await new Promise(resolve => setTimeout(resolve, 1000))
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();

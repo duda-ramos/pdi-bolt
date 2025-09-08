@@ -51,7 +51,7 @@ export const getUserProfile = async (userId: string) => {
         updated_at
       `)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
   
     if (error) {
       console.error('Error getting user profile:', error)

@@ -143,53 +143,71 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 2. Criar perfil na tabela profiles se o usuário foi criado
       if (data.user) {
         try {
-          // Wait a moment for the auth state to be properly set
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Wait longer for the auth state to be properly set
+          await new Promise(resolve => setTimeout(resolve, 500));
           
           await createUserProfile(data.user.id, email, {
             nome,
             role
           });
+          
+          console.log('Profile created successfully for user:', data.user.id);
         } catch (profileError) {
           console.error('Error creating user profile:', profileError);
-          // If profile creation fails, try to delete the auth user to maintain consistency
-          try {
-            await supabase.auth.admin.deleteUser(data.user.id);
-          } catch (deleteError) {
-            console.error('Error cleaning up user after profile creation failure:', deleteError);
-          }
-          throw new Error('Falha ao criar perfil do usuário. Tente novamente.');
+          
+          // Don't block the signup flow if profile creation fails
+          // User can still confirm email and login later
+          console.log('Profile creation failed, but user account was created. User can login after email confirmation.');
         }
       }
 
       // 3. Verificar se precisa de confirmação de email
       if (data.user && !data.session) {
-        // Usuário criado mas precisa confirmar email - isso é normal
+        // User created but needs email confirmation - this is normal
         setLoading(false);
         return { 
           success: true, 
-          message: 'Conta criada com sucesso! Verifique seu email para confirmar a conta e depois faça login.',
+          message: 'Conta criada com sucesso! Verifique seu email para confirmar a conta. Após a confirmação, faça login para completar seu perfil se necessário.',
           needsConfirmation: true 
         };
       }
 
       // 4. Se temos uma sessão, carregar o perfil
       if (data.session && data.user) {
-        // Login automático - carregar perfil
-        await loadUserProfile(data.user);
-        return { success: true, message: 'Conta criada e login realizado com sucesso!' };
+        // Automatic login - load profile
+        try {
+          await loadUserProfile(data.user);
+          return { success: true, message: 'Conta criada e login realizado com sucesso!' };
+        } catch (loadError) {
+          console.error('Error loading profile after signup:', loadError);
+          return { 
+            success: true, 
+            message: 'Conta criada com sucesso! Faça login para acessar sua conta.',
+            needsConfirmation: false 
+          };
+        }
       }
 
-      // Caso inesperado
+      // Unexpected case
       return { 
         success: true, 
-        message: 'Conta criada! Faça login para continuar.',
+        message: 'Conta criada com sucesso! Faça login para continuar.',
         needsConfirmation: false 
       };
 
     } catch (error: any) {
       console.error('Signup error:', error);
-      throw new Error(error.message || 'Erro ao criar conta');
+      
+      // Provide more specific error messages
+      if (error.message?.includes('User already registered')) {
+        throw new Error('Este email já está cadastrado. Tente fazer login ou use outro email.');
+      } else if (error.message?.includes('Password should be at least')) {
+        throw new Error('A senha deve ter pelo menos 6 caracteres.');
+      } else if (error.message?.includes('Invalid email')) {
+        throw new Error('Por favor, insira um email válido.');
+      } else {
+        throw new Error(error.message || 'Erro ao criar conta. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }

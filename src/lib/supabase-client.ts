@@ -71,7 +71,20 @@ export const createUserProfile = async (userId: string, email: string, profileDa
   role: 'admin' | 'gestor' | 'colaborador' | 'rh';
 }) => {
   try {
-    // Use service role key for initial profile creation to bypass RLS
+    // First check if profile already exists
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id, user_id, nome, email, role')
+      .eq('user_id', userId)
+      .single()
+    
+    // If profile exists, return it
+    if (existingProfile && !checkError) {
+      console.log('Profile already exists, returning existing profile')
+      return existingProfile
+    }
+    
+    // Create new profile
     const { data, error } = await supabase
       .from('profiles')
       .insert({
@@ -79,16 +92,35 @@ export const createUserProfile = async (userId: string, email: string, profileDa
         email,
         nome: profileData.nome,
         role: profileData.role,
-        status: 'ativo'
+        status: 'ativo',
+        data_admissao: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
       })
       .select()
       .single()
     
     if (error) {
+      // Handle unique constraint violation (profile already exists)
+      if (error.code === '23505') {
+        console.log('Profile already exists (unique constraint), fetching existing profile')
+        const { data: existingData, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+        
+        if (fetchError) {
+          console.error('Error fetching existing profile:', fetchError)
+          throw fetchError
+        }
+        
+        return existingData
+      }
+      
       console.error('Error creating user profile:', error)
       throw error
     }
     
+    console.log('Profile created successfully:', data)
     return data
   } catch (error) {
     console.error('Error in createUserProfile:', error)

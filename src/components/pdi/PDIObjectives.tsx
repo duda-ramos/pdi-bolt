@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle, Clock, AlertCircle, MessageSquare, User } from 'lucide-react';
+import { Plus, CheckCircle, Clock, AlertCircle, MessageSquare, User, Award, UserCheck } from 'lucide-react';
 import Badge from '../common/Badge';
 import PDIForm from './PDIForm';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PDIObjective, PDIObjectiveInput } from '../../types/pdi';
+
+interface ExtendedPDIObjective extends PDIObjective {
+  competency_name?: string;
+  mentor_name?: string;
+  comments_count?: number;
+}
+
+interface PDIObjectivesProps {
+  onSelectObjective?: (objectiveId: string | null) => void;
+}
 
 // Map database status to UI labels
 const statusLabels = {
@@ -14,12 +24,13 @@ const statusLabels = {
   cancelado: 'Cancelado'
 };
 
-const PDIObjectives: React.FC = () => {
+const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
   const { user } = useAuth();
-  const [objectives, setObjectives] = useState<PDIObjective[]>([]);
+  const [objectives, setObjectives] = useState<ExtendedPDIObjective[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [selectedObjective, setSelectedObjective] = useState<string | null>(null);
 
   // Fetch objectives from Supabase
   useEffect(() => {
@@ -45,7 +56,50 @@ const PDIObjectives: React.FC = () => {
         throw fetchError;
       }
 
-      setObjectives(data || []);
+      // Enrich objectives with additional data
+      const enrichedObjectives = await Promise.all(
+        (data || []).map(async (objective) => {
+          const enriched: ExtendedPDIObjective = { ...objective };
+
+          // Get competency name if linked
+          if (objective.competency_id) {
+            const { data: competency } = await supabase
+              .from('competencies')
+              .select('nome')
+              .eq('id', objective.competency_id)
+              .single();
+            
+            if (competency) {
+              enriched.competency_name = competency.nome;
+            }
+          }
+
+          // Get mentor name if assigned
+          if (objective.mentor_id) {
+            const { data: mentor } = await supabase
+              .from('profiles')
+              .select('nome')
+              .eq('user_id', objective.mentor_id)
+              .single();
+            
+            if (mentor) {
+              enriched.mentor_name = mentor.nome;
+            }
+          }
+
+          // Get comments count
+          const { count } = await supabase
+            .from('pdi_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('objective_id', objective.id);
+          
+          enriched.comments_count = count || 0;
+
+          return enriched;
+        })
+      );
+
+      setObjectives(enrichedObjectives);
     } catch (err) {
       console.error('Error fetching objectives:', err);
       setError('Erro ao carregar objetivos. Tente novamente.');
@@ -126,6 +180,12 @@ const PDIObjectives: React.FC = () => {
     }
   };
 
+  const handleSelectObjective = (objectiveId: string) => {
+    const newSelection = selectedObjective === objectiveId ? null : objectiveId;
+    setSelectedObjective(newSelection);
+    onSelectObjective?.(newSelection);
+  };
+
   const statusConfig = {
     pendente: { label: 'A Fazer', variant: 'neutral' as const, icon: Clock },
     em_andamento: { label: 'Em Andamento', variant: 'info' as const, icon: Clock },
@@ -182,11 +242,35 @@ const PDIObjectives: React.FC = () => {
           const Icon = config.icon;
           
           return (
-            <div key={objective.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow group">
+            <div 
+              key={objective.id} 
+              className={`border rounded-lg p-4 hover:shadow-md transition-all group cursor-pointer ${
+                selectedObjective === objective.id 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200'
+              }`}
+              onClick={() => handleSelectObjective(objective.id)}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900">{objective.titulo}</h4>
                   <p className="text-sm text-gray-600 mt-1">{objective.descricao}</p>
+                  
+                  {/* Competency and Mentor Info */}
+                  <div className="flex items-center space-x-4 mt-2">
+                    {objective.competency_name && (
+                      <div className="flex items-center space-x-1 text-sm text-blue-600">
+                        <Award className="w-3 h-3" />
+                        <span>{objective.competency_name}</span>
+                      </div>
+                    )}
+                    {objective.mentor_name && (
+                      <div className="flex items-center space-x-1 text-sm text-green-600">
+                        <UserCheck className="w-3 h-3" />
+                        <span>Mentor: {objective.mentor_name}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <select
@@ -237,18 +321,18 @@ const PDIObjectives: React.FC = () => {
                     <AlertCircle className="w-4 h-4 mr-1" />
                     {objective.data_fim ? new Date(objective.data_fim).toLocaleDateString('pt-BR') : 'Sem prazo'}
                   </span>
-                  {objective.mentor_id && (
-                    <span className="flex items-center">
-                      <User className="w-4 h-4 mr-1" />
-                      Mentor
-                    </span>
-                  )}
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <button className="flex items-center hover:text-blue-600 transition-colors">
+                  <button 
+                    className="flex items-center hover:text-blue-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectObjective(objective.id);
+                    }}
+                  >
                     <MessageSquare className="w-4 h-4 mr-1" />
-                    0
+                    {objective.comments_count || 0}
                   </button>
                 </div>
               </div>

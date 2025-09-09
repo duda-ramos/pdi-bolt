@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Layout/Header';
 import PDIObjectives from '../components/pdi/PDIObjectives';
+import PDIComments from '../components/pdi/PDIComments';
 import AchievementsList from '../components/achievements/AchievementsList';
 import { Target, Award, TrendingUp, Users } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
@@ -8,6 +9,7 @@ import ProgressBar from '../components/common/ProgressBar';
 
 const PDI: React.FC = () => {
   const [currentCycle] = useState('2024-H1');
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null);
 
   return (
     <div>
@@ -48,7 +50,14 @@ const PDI: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main PDI Content */}
           <div className="lg:col-span-2">
-            <PDIObjectives />
+            <PDIObjectives onSelectObjective={setSelectedObjectiveId} />
+            
+            {/* Comments Section */}
+            {selectedObjectiveId && (
+              <div className="mt-8">
+                <PDIComments objectiveId={selectedObjectiveId} />
+              </div>
+            )}
           </div>
           
           {/* Sidebar */}

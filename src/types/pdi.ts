@@ -20,6 +20,8 @@ export interface PDIObjectiveInput {
   description: string;
   data_inicio: string;
   data_fim: string;
+  competency_id?: string;
+  mentor_id?: string;
 }
 
 export interface PDIComment {

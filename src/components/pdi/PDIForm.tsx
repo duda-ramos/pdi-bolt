@@ -1,6 +1,19 @@
-import React, { useState } from 'react';
-import { Target, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Target, Calendar, Award, UserCheck } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import type { PDIObjectiveInput } from '../../types/pdi';
+
+interface Competency {
+  id: string;
+  nome: string;
+  tipo: 'hard_skill' | 'soft_skill';
+}
+
+interface Mentor {
+  user_id: string;
+  nome: string;
+}
 
 interface PDIFormProps {
   onSubmit: (objective: PDIObjectiveInput) => void;
@@ -8,12 +21,79 @@ interface PDIFormProps {
 }
 
 const PDIForm: React.FC<PDIFormProps> = ({ onSubmit, onCancel }) => {
+  const { user } = useAuth();
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
+  const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [formData, setFormData] = useState({
     titulo: '',
     description: '',
     data_inicio: '',
-    data_fim: ''
+    data_fim: '',
+    competency_id: '',
+    mentor_id: ''
   });
+
+  useEffect(() => {
+    fetchFormData();
+  }, [user]);
+
+  const fetchFormData = async () => {
+    if (!user) return;
+
+    try {
+      // Get user's career track competencies
+      let userTrackId = user.trilha_id;
+      
+      if (!userTrackId) {
+        const { data: tracks } = await supabase
+          .from('career_tracks')
+          .select('id')
+          .limit(1);
+        
+        if (tracks && tracks.length > 0) {
+          userTrackId = tracks[0].id;
+        }
+      }
+
+      if (userTrackId) {
+        // Get stages for the track
+        const { data: stages } = await supabase
+          .from('career_stages')
+          .select('id')
+          .eq('trilha_id', userTrackId);
+
+        if (stages && stages.length > 0) {
+          const stageIds = stages.map(s => s.id);
+          
+          // Get competencies for these stages
+          const { data: competenciesData } = await supabase
+            .from('competencies')
+            .select('id, nome, tipo')
+            .in('stage_id', stageIds)
+            .order('nome');
+          
+          setCompetencies(competenciesData || []);
+        }
+      }
+
+      // Get potential mentors (users with gestor or admin role)
+      const { data: mentorsData } = await supabase
+        .from('profiles')
+        .select('user_id, nome')
+        .in('role', ['gestor', 'admin'])
+        .eq('status', 'ativo')
+        .order('nome');
+      
+      setMentors(mentorsData || []);
+
+    } catch (error) {
+      console.error('Error fetching form data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +159,44 @@ const PDIForm: React.FC<PDIFormProps> = ({ onSubmit, onCancel }) => {
                 placeholder="Descreva o objetivo e como pretende alcançá-lo..."
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Competência Relacionada (Opcional)
+              </label>
+              <select
+                value={formData.competency_id}
+                onChange={(e) => handleChange('competency_id', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+              >
+                <option value="">Selecione uma competência</option>
+                {competencies.map((competency) => (
+                  <option key={competency.id} value={competency.id}>
+                    {competency.nome} ({competency.tipo === 'hard_skill' ? 'Hard' : 'Soft'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Mentor (Opcional)
+              </label>
+              <select
+                value={formData.mentor_id}
+                onChange={(e) => handleChange('mentor_id', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+              >
+                <option value="">Selecione um mentor</option>
+                {mentors.map((mentor) => (
+                  <option key={mentor.user_id} value={mentor.user_id}>
+                    {mentor.nome}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

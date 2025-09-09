@@ -29,7 +29,7 @@ interface CareerProgressProps {
 
 const CareerProgress: React.FC<CareerProgressProps> = ({ 
   careerTrack, 
-  stages, 
+  stages = [], 
   currentStageId 
 }) => {
   const formatSalaryRange = (stage: CareerStage) => {

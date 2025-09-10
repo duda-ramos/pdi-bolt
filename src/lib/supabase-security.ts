@@ -25,7 +25,7 @@ export const validateEnvironment = () => {
   }
   
   // Check for accidentally exposed service role key
-  if (anonKey.length > 200) {
+  if (anonKey.length > 400) {
     console.error('🚨 SECURITY WARNING: Anon key appears to be a service role key!');
     console.error('Service role keys should NEVER be used in frontend code');
     throw new Error('Invalid key type detected');

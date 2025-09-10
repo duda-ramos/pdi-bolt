@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useErrorHandler } from '../hooks/useErrorHandler';
+import { measureAsync } from '../utils/performance';
 import { supabase, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase-client';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/auth';
@@ -8,6 +10,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { logError } = useErrorHandler();
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -17,6 +20,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (error) {
           console.error('Error getting session:', error);
+          logError(error, 'SESSION_ERROR');
           setLoading(false);
           return;
         }
@@ -26,6 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
+        logError(error as Error, 'INIT_SESSION_ERROR');
       } finally {
         setLoading(false);
       }
@@ -100,12 +105,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await measureAsync('auth_login', () =>
+        supabase.auth.signInWithPassword({
+          email,
+          password
+        })
+      );
 
       if (error) {
+        logError(error, 'LOGIN_ERROR');
         throw error;
       }
 
@@ -114,6 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       console.error('Login error:', error);
+      logError(error, 'LOGIN_FAILED');
       throw new Error(error.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);
@@ -125,18 +134,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       // 1. Criar usuário no Supabase Auth  
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            nome,
-            role
+      const { data, error } = await measureAsync('auth_signup', () =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              nome,
+              role
+            }
           }
-        }
-      });
+        })
+      );
 
       if (error) {
+        logError(error, 'SIGNUP_ERROR');
         throw error;
       }
 
@@ -151,6 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('Profile created successfully for user:', data.user.id);
         } catch (profileError) {
           console.error('Error creating user profile:', profileError);
+          logError(profileError as Error, 'PROFILE_CREATION_ERROR');
           
           // If profile creation fails, still allow signup to complete
           console.log('Profile creation failed, but user account was created.');
@@ -193,6 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     } catch (error: any) {
       console.error('Signup error:', error);
+      logError(error, 'SIGNUP_FAILED');
       
       // Provide more specific error messages
       if (error.message?.includes('User already registered')) {
@@ -211,11 +225,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      const { error } = await supabaseSignOut();
+      const { error } = await measureAsync('auth_logout', () => supabaseSignOut());
       if (error) throw error;
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
+      logError(error as Error, 'LOGOUT_ERROR');
       // Still clear user state even if logout fails
       setUser(null);
     }
@@ -226,18 +241,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) throw new Error('Usuário não autenticado');
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          nome: updates.nome,
-          bio: updates.bio,
-          localizacao: updates.localizacao,
-          formacao: updates.formacao,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
+      const { data, error } = await measureAsync('profile_update', () =>
+        supabase
+          .from('profiles')
+          .update({
+            nome: updates.nome,
+            bio: updates.bio,
+            localizacao: updates.localizacao,
+            formacao: updates.formacao,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select()
+          .single()
+      );
 
       if (error) throw error;
 
@@ -247,6 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return data;
     } catch (error) {
       console.error('Error updating profile:', error);
+      logError(error as Error, 'PROFILE_UPDATE_ERROR');
       throw error;
     }
   };

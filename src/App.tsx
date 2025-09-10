@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import { useErrorHandler, setupGlobalErrorHandler } from './hooks/useErrorHandler';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import Sidebar from './components/Layout/Sidebar';
@@ -14,7 +16,13 @@ import Settings from './pages/Settings';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const { logError } = useErrorHandler();
   const [currentPage, setCurrentPage] = useState('dashboard');
+
+  // Setup global error handling
+  React.useEffect(() => {
+    setupGlobalErrorHandler(logError);
+  }, [logError]);
 
   if (loading) {
     return (
@@ -68,9 +76,11 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

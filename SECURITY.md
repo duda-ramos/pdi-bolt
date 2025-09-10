@@ -9,8 +9,8 @@ Use `.env` file for development with your development Supabase project credentia
 Create `.env.production` file with your production Supabase project credentials:
 
 ```env
-VITE_SUPABASE_URL=https://your-production-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-production-anon-key-here
+VITE_SUPABASE_URL=https://pbjwtnhpcwkplnyzkrtu.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiand0bmhwY3drcGxueXprcnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMDE3OTMsImV4cCI6MjA3MTg3Nzc5M30.yisHwRskz-2wpS4fbqarBxPdBSGxFxYiIfF-YOvinq0
 ```
 
 ## Row Level Security (RLS) Checklist

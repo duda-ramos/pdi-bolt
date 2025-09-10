@@ -11,8 +11,8 @@ import { supabase } from './supabase';
  * Security validation for environment variables
  */
 export const validateEnvironment = () => {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const url = import.env.VITE_SUPABASE_URL;
+  const anonKey = import.env.VITE_SUPABASE_ANON_KEY;
   
   // Check if environment variables are set
   if (!url || !anonKey) {

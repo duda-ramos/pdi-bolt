@@ -144,7 +144,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('👤 AuthProvider: Starting loadUserProfile for:', supabaseUser.id, supabaseUser.email);
       console.log('👤 AuthProvider: Loading profile for user:', supabaseUser.id, supabaseUser.email);
       
-      const profile = await getUserProfile(supabaseUser.id);
+      // Timeout para evitar travamento na busca do perfil
+      const profilePromise = getUserProfile(supabaseUser.id);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile loading timeout')), 10000)
+      );
+      
+      const profile = await Promise.race([profilePromise, timeoutPromise]);
       
       if (profile) {
         console.log('📋 AuthProvider: Profile data received:', profile.nome, profile.role);

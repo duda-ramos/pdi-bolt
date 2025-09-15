@@ -182,7 +182,7 @@ export const createUserProfile = async (userId: string, email: string, profileDa
           .single()
         
         if (fetchError) {
-          console.error('❌ Error fetching existing profile;', fetchError)
+          console.error('❌ Error fetching existing profile:', fetchError)
           throw fetchError
         }
         

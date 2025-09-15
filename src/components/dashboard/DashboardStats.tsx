@@ -1,43 +1,75 @@
 import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, Award, TrendingUp, Users, Brain, CheckCircle } from 'lucide-react';
 import StatCard from '../common/StatCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { dashboardService } from '../../services/supabase/dashboard';
 
 const DashboardStats: React.FC = () => {
   const { user } = useAuth();
+  const [stats, setStats] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadStats();
+    }
+  }, [user]);
+
+  const loadStats = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await dashboardService.getStats(user.id, user.role);
+      setStats(data);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatsForRole = () => {
+    if (loading) {
+      return [
+        { title: 'Carregando...', value: '-', icon: Target, color: 'blue' as const },
+        { title: 'Carregando...', value: '-', icon: Award, color: 'yellow' as const },
+        { title: 'Carregando...', value: '-', icon: TrendingUp, color: 'green' as const },
+        { title: 'Carregando...', value: '-', icon: CheckCircle, color: 'indigo' as const }
+      ];
+    }
+
     switch (user?.role) {
       case 'colaborador':
         return [
-          { title: 'Objetivos Ativos', value: '4', icon: Target, color: 'blue' as const },
-          { title: 'Conquistas', value: '12', icon: Award, color: 'yellow' as const },
-          { title: 'Progresso PDI', value: '67%', icon: TrendingUp, color: 'green' as const },
-          { title: 'Competências', value: '8/12', icon: CheckCircle, color: 'indigo' as const }
+          { title: 'Objetivos Ativos', value: stats.activeObjectives || 0, icon: Target, color: 'blue' as const },
+          { title: 'Conquistas', value: stats.achievements || 0, icon: Award, color: 'yellow' as const },
+          { title: 'Progresso PDI', value: stats.progress || '0%', icon: TrendingUp, color: 'green' as const },
+          { title: 'Competências', value: stats.competencies || 0, icon: CheckCircle, color: 'indigo' as const }
         ];
       
       case 'gestor':
         return [
-          { title: 'Liderados', value: '8', icon: Users, color: 'blue' as const },
-          { title: 'Avaliações Pendentes', value: '3', icon: Target, color: 'yellow' as const },
-          { title: 'PDIs Aprovados', value: '5', icon: CheckCircle, color: 'green' as const },
-          { title: 'Bonificações', value: '2', icon: Award, color: 'indigo' as const }
+          { title: 'Liderados', value: stats.teamMembers || 0, icon: Users, color: 'blue' as const },
+          { title: 'Avaliações Pendentes', value: stats.pendingAssessments || 0, icon: Target, color: 'yellow' as const },
+          { title: 'PDIs Aprovados', value: stats.approvedPDIs || 0, icon: CheckCircle, color: 'green' as const },
+          { title: 'Bonificações', value: stats.bonuses || 0, icon: Award, color: 'indigo' as const }
         ];
       
       case 'rh':
         return [
-          { title: 'Agenda Clínica', value: '6', icon: Brain, color: 'blue' as const },
-          { title: 'Acompanhamentos', value: '12', icon: Target, color: 'yellow' as const },
-          { title: 'Testes Pendentes', value: '4', icon: CheckCircle, color: 'green' as const },
-          { title: 'Colaboradores', value: '45', icon: Users, color: 'indigo' as const }
+          { title: 'Agenda Clínica', value: stats.appointments || 0, icon: Brain, color: 'blue' as const },
+          { title: 'Acompanhamentos', value: stats.followUps || 0, icon: Target, color: 'yellow' as const },
+          { title: 'Testes Pendentes', value: stats.pendingTests || 0, icon: CheckCircle, color: 'green' as const },
+          { title: 'Colaboradores', value: stats.activeUsers || 0, icon: Users, color: 'indigo' as const }
         ];
       
       case 'admin':
         return [
-          { title: 'Usuários Ativos', value: '45', icon: Users, color: 'blue' as const },
-          { title: 'Trilhas Ativas', value: '8', icon: TrendingUp, color: 'green' as const },
-          { title: 'Avaliações Completas', value: '38', icon: CheckCircle, color: 'indigo' as const },
-          { title: 'Grupos de Ação', value: '6', icon: Target, color: 'yellow' as const }
+          { title: 'Usuários Ativos', value: stats.totalUsers || 0, icon: Users, color: 'blue' as const },
+          { title: 'Trilhas Ativas', value: stats.activeTracks || 0, icon: TrendingUp, color: 'green' as const },
+          { title: 'Avaliações Completas', value: stats.completedAssessments || 0, icon: CheckCircle, color: 'indigo' as const },
+          { title: 'Grupos de Ação', value: stats.actionGroups || 0, icon: Target, color: 'yellow' as const }
         ];
       
       default:

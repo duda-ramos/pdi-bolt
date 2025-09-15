@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getSupabaseClient, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase';
+import { profileService } from '../services/supabase/profiles';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/auth';
 
@@ -330,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Função para atualizar perfil do usuário
-  const updateProfile = async (updates: Partial<User>) => {
+  const updateProfile = async (updates: Partial<User>, avatarFile?: File) => {
     if (!user) {
       console.error('❌ AuthProvider: Cannot update profile - no user authenticated');
       console.error('❌ AuthProvider: Cannot update profile - no user authenticated');
@@ -340,31 +341,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('📝 AuthProvider: Starting updateProfile for user:', user.id, updates);
       console.log('📝 AuthProvider: Updating profile for user:', user.id, updates);
-      const supabase = getSupabaseClient();
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          nome: updates.nome,
-          bio: updates.bio,
-          localizacao: updates.localizacao,
-          formacao: updates.formacao,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ AuthProvider: Error updating profile:', error);
-        console.error('❌ AuthProvider: Error updating profile:', error);
-        throw error;
+      let avatarUrl = updates.avatar;
+      
+      // Upload avatar if file provided
+      if (avatarFile) {
+        avatarUrl = await profileService.uploadAvatar(avatarFile);
       }
+      
+      const updateData = {
+        nome: updates.nome,
+        bio: updates.bio,
+        localizacao: updates.localizacao,
+        formacao: updates.formacao,
+        trilha_id: updates.trilha_id,
+        avatar: avatarUrl
+      };
+      
+      const data = await profileService.updateProfile(user.id, updateData);
 
       console.log('✅ AuthProvider: Profile updated successfully');
       console.log('✅ AuthProvider: Profile updated successfully');
       // Atualizar estado local
-      setUser(prev => prev ? { ...prev, ...updates, updated_at: data.updated_at } : null);
+      setUser(prev => prev ? { 
+        ...prev, 
+        ...updates, 
+        avatar: avatarUrl || prev.avatar,
+        updated_at: data.updated_at 
+      } : null);
       
       return data;
     } catch (error) {
@@ -372,6 +376,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('❌ AuthProvider: Error updating profile:', error);
       throw error;
     }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    return await profileService.uploadAvatar(file);
   };
 
   console.log('🎯 AuthProvider: Rendering with state:', { 
@@ -388,7 +396,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateProfile, uploadAvatar }}>
       {children}
     </AuthContext.Provider>
   );

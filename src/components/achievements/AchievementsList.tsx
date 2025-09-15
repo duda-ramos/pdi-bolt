@@ -1,152 +1,91 @@
 import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Award, Star, Trophy, Target, Users, Zap } from 'lucide-react';
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-  unlockedAt?: string;
-  progress?: number;
-  total?: number;
-}
+import { useAuth } from '../../contexts/AuthContext';
+import { achievementsService } from '../../services/supabase/achievements';
 
 const AchievementsList: React.FC = () => {
-  const achievements: Achievement[] = [
-    {
-      id: '1',
-      name: 'Aprendiz Dedicado',
-      description: 'Complete 5 objetivos de aprendizado',
-      icon: '🎓',
-      unlocked: true,
-      unlockedAt: '2024-01-15',
-      progress: 5,
-      total: 5
-    },
-    {
-      id: '2',
-      name: 'Mentor Colaborativo',
-      description: 'Ajude 3 colegas em seus objetivos',
-      icon: '🤝',
-      unlocked: true,
-      unlockedAt: '2024-01-10',
-      progress: 3,
-      total: 3
-    },
-    {
-      id: '3',
-      name: 'Inovador',
-      description: 'Implemente uma melhoria significativa',
-      icon: '💡',
-      unlocked: true,
-      unlockedAt: '2024-01-05',
-      progress: 1,
-      total: 1
-    },
-    {
-      id: '4',
-      name: 'Especialista',
-      description: 'Alcance nível 9+ em uma competência técnica',
-      icon: '⚡',
-      unlocked: false,
-      progress: 8,
-      total: 9
-    },
-    {
-      id: '5',
-      name: 'Líder Natural',
-      description: 'Coordene 2 grupos de ação com sucesso',
-      icon: '👑',
-      unlocked: false,
-      progress: 1,
-      total: 2
-    },
-    {
-      id: '6',
-      name: 'Mestre PDI',
-      description: 'Complete 10 objetivos PDI',
-      icon: '🏆',
-      unlocked: false,
-      progress: 7,
-      total: 10
+  const { user } = useAuth();
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadAchievements();
     }
-  ];
+  }, [user]);
+
+  const loadAchievements = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await achievementsService.getUserAchievements(user.id);
+      setAchievements(data || []);
+    } catch (error) {
+      console.error('Error loading achievements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-6">Conquistas</h3>
       
+      {loading ? (
+        <div className="text-center py-4">
+          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {achievements.map((achievement) => (
           <div
             key={achievement.id}
             onClick={() => {
-              if (achievement.unlocked) {
-                alert(`Conquista: ${achievement.name}\n${achievement.description}\nDesbloqueada em: ${achievement.unlockedAt}`);
-              } else {
-                alert(`Progresso: ${achievement.progress}/${achievement.total}\n${achievement.description}`);
-              }
+              alert(`Conquista: ${achievement.titulo}\n${achievement.descricao}\nDesbloqueada em: ${new Date(achievement.conquistado_em).toLocaleDateString('pt-BR')}`);
             }}
-            className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:scale-105 ${
-              achievement.unlocked
-                ? 'border-yellow-200 bg-yellow-50'
-                : 'border-gray-200 bg-gray-50'
-            }`}
+            className="p-4 rounded-lg border-2 transition-all cursor-pointer hover:scale-105 border-yellow-200 bg-yellow-50"
           >
             <div className="flex items-start space-x-3">
-              <div className={`text-3xl ${achievement.unlocked ? '' : 'grayscale opacity-50'}`}>
-                {achievement.icon}
+              <div className="text-3xl">
+                🏆
               </div>
               
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
-                  <h4 className={`font-medium ${
-                    achievement.unlocked ? 'text-yellow-800' : 'text-gray-600'
-                  }`}>
-                    {achievement.name}
+                  <h4 className="font-medium text-yellow-800">
+                    {achievement.titulo}
                   </h4>
-                  {achievement.unlocked && (
-                    <Trophy className="w-4 h-4 text-yellow-600" />
-                  )}
+                  <Trophy className="w-4 h-4 text-yellow-600" />
                 </div>
                 
-                <p className={`text-sm mb-3 ${
-                  achievement.unlocked ? 'text-yellow-700' : 'text-gray-500'
-                }`}>
-                  {achievement.description}
+                <p className="text-sm mb-3 text-yellow-700">
+                  {achievement.descricao}
                 </p>
 
-                {/* Progress */}
-                {achievement.progress !== undefined && achievement.total !== undefined && (
-                  <div className="mb-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-600">Progresso</span>
-                      <span className="text-gray-900 font-medium">
-                        {achievement.progress}/{achievement.total}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div 
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
-                          achievement.unlocked ? 'bg-yellow-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {achievement.unlocked && achievement.unlockedAt && (
-                  <p className="text-xs text-yellow-600">
-                    Desbloqueado em {new Date(achievement.unlockedAt).toLocaleDateString('pt-BR')}
+                {achievement.pdi_objectives && (
+                  <p className="text-xs text-yellow-600 mb-2">
+                    Relacionado ao objetivo: {achievement.pdi_objectives.titulo}
                   </p>
                 )}
+
+                <p className="text-xs text-yellow-600">
+                  Desbloqueado em {new Date(achievement.conquistado_em).toLocaleDateString('pt-BR')}
+                </p>
               </div>
             </div>
           </div>
         ))}
+        
+        {achievements.length === 0 && (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p>Nenhuma conquista desbloqueada ainda.</p>
+            <p className="text-sm">Complete objetivos PDI para desbloquear conquistas!</p>
+          </div>
+        )}
       </div>
+      )}
     </div>
   );
 };

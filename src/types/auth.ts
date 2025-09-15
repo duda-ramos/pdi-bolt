@@ -24,6 +24,7 @@ export interface AuthContextType {
   logout: () => void;
   loading: boolean;
   updateProfile: (updates: Partial<User>) => Promise<any>;
+  uploadAvatar: (file: File) => Promise<string>;
 }
 
 export interface Permission {

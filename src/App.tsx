@@ -1,48 +1,32 @@
 import React, { useState } from 'react';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import { ToastProvider } from './components/common/Toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoginForm from './components/auth/LoginForm';
-import Sidebar from './components/Layout/Sidebar';
+import { useAuth } from './contexts/AuthContext';
+import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import Career from './pages/Career';
-import Competencies from './pages/Competencies';
-import PDI from './pages/PDI';
-import MentalHealth from './pages/MentalHealth';
 import Teams from './pages/Teams';
+import Career from './pages/Career';
+import PDI from './pages/PDI';
+import Competencies from './pages/Competencies';
 import ActionGroups from './pages/ActionGroups';
+import MentalHealth from './pages/MentalHealth';
 import Settings from './pages/Settings';
+import Header from './components/Layout/Header';
+import Sidebar from './components/Layout/Sidebar';
+import LoginForm from './components/auth/LoginForm';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
-console.log('🚀 App.tsx: File loaded and parsed');
+type PageType = 'dashboard' | 'profile' | 'teams' | 'career' | 'pdi' | 'competencies' | 'action-groups' | 'mental-health' | 'settings';
 
-const AppContent: React.FC = () => {
-  console.log('🎯 AppContent: Component function called');
+function App() {
   const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
 
-  console.log('🎯 App render state:', { hasUser: !!user, loading, currentPage });
+  console.log('✅ App: Rendering with user:', user?.id, 'loading:', loading);
 
-  if (loading) {
-    console.log('⏳ AppContent: Showing loading state');
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
+  // Handle auth callback route
+  if (window.location.pathname === '/auth/callback') {
+    return <AuthCallback />;
   }
-
-  if (!user) {
-    console.log('👤 AppContent: No user found, showing login form');
-    console.log('👤 No user found, showing login form');
-    return <LoginForm />;
-  }
-
-  console.log('✅ AppContent: User authenticated, showing main app');
-  console.log('✅ User authenticated, showing main app');
 
   const renderPage = () => {
     switch (currentPage) {
@@ -50,18 +34,18 @@ const AppContent: React.FC = () => {
         return <Dashboard />;
       case 'profile':
         return <Profile />;
-      case 'career':
-        return <Career />;
-      case 'competencies':
-        return <Competencies />;
-      case 'pdi':
-        return <PDI />;
-      case 'mental-health':
-        return <MentalHealth />;
       case 'teams':
         return <Teams />;
+      case 'career':
+        return <Career />;
+      case 'pdi':
+        return <PDI />;
+      case 'competencies':
+        return <Competencies />;
       case 'action-groups':
         return <ActionGroups />;
+      case 'mental-health':
+        return <MentalHealth />;
       case 'settings':
         return <Settings />;
       default:
@@ -69,31 +53,37 @@ const AppContent: React.FC = () => {
     }
   };
 
+  if (loading) {
+    console.log('⏳ App: Loading auth state...');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!user) {
+    console.log('🔐 App: No user, showing login form');
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <LoginForm />
+      </div>
+    );
+  }
+
+  console.log('✅ App: User authenticated, showing main app');
+  
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
-      <div className="flex-1">
-        {renderPage()}
+    <div className="min-h-screen bg-gray-50">
+      <Header onNavigate={setCurrentPage} currentPage={currentPage} />
+      <div className="flex">
+        <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
+        <main className="flex-1 ml-64 p-8">
+          {renderPage()}
+        </main>
       </div>
     </div>
   );
-};
-
-function App() {
-  console.log('🚀 App: Component mounting');
-  console.log('🚀 App component mounting');
-  
-  return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ToastProvider>
-    </ErrorBoundary>
-  );
 }
-
-console.log('📄 App.tsx: File execution completed');
 
 export default App;

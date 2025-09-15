@@ -1,3 +1,4 @@
+import React from 'react';
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, MessageCircle, Award, TrendingUp, Clock } from 'lucide-react';
 import Badge from '../common/Badge';

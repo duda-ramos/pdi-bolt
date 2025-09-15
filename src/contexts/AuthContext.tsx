@@ -3,17 +3,16 @@
        console.log('🔐 AuthProvider: Starting login for:', email);
        console.log('🔐 AuthProvider: Attempting login for:', email);
        const supabase = getSupabaseClient();
-+      
-+      // Generate safe redirect URL for auth
-+      const redirectUrl = new URL('/auth/callback', window.location.origin).toString();
-+      
+      
+      // Generate safe redirect URL for auth
+      const redirectUrl = new URL('/auth/callback', window.location.origin).toString();
+      
        const { data, error } = await supabase.auth.signInWithPassword({
          email,
--        password
-+        password,
-+        options: {
-+          redirectTo: redirectUrl
-+        }
+         password,
+         options: {
+           redirectTo: redirectUrl
+         }
        });
 
        if (error) {
@@ -30,12 +29,12 @@
      } catch (error: any) {
        console.error('❌ AuthProvider: Exception in login:', error);
        console.error('❌ AuthProvider: Login error:', error);
-+      
-+      // Handle navigation errors specifically
-+      if (error.message?.includes('Cannot navigate to URL')) {
-+        throw new Error('Erro de navegação. Recarregue a página e tente novamente.');
-+      }
-+      
+      
+      // Handle navigation errors specifically
+      if (error.message?.includes('Cannot navigate to URL')) {
+        throw new Error('Erro de navegação. Recarregue a página e tente novamente.');
+      }
+      
        throw new Error(error.message || 'Erro ao fazer login');
      }
    };
@@ -46,20 +45,22 @@
        console.log('📝 AuthProvider: Attempting signup for:', email, 'Role:', role);
        const supabase = getSupabaseClient();
        
-+      // Generate safe redirect URL for auth
-+      const redirectUrl = new URL('/auth/callback', window.location.origin).toString();
-+      
+      // Generate safe redirect URL for auth
+      const redirectUrl = new URL('/auth/callback', window.location.origin).toString();
+      
        // 1. Criar usuário no Supabase Auth  
        const { data, error } = await supabase.auth.signUp({
          email,
          password,
          options: {
-+          emailRedirectTo: redirectUrl,
+           emailRedirectTo: redirectUrl,
            data: {
              nome,
              role
-  
-     }
-   }         }
+           }
          }
        });
+     } catch (error: any) {
+       throw error;
+     }
+   };

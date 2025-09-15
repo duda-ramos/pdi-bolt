@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, Calendar, FileText, MessageSquare, Star, Award, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 import NewTeamForm from '../components/teams/NewTeamForm';
 import Header from '../components/Layout/Header';
-import { mockTeams } from '../services/supabase/mockData';
 
 interface Team {
   id: string;
@@ -29,7 +27,6 @@ interface TeamMember {
 
 const Teams: React.FC = () => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,12 +41,6 @@ const Teams: React.FC = () => {
   }, [user]);
 
   const fetchTeams = async () => {
-    if (useMockData) {
-      setTeams(mockTeams);
-      setLoading(false);
-      return;
-    }
-
     try {
       setError(null);
       
@@ -92,8 +83,6 @@ const Teams: React.FC = () => {
       setTeams(teamsWithLeaders);
     } catch (err) {
       console.error('Error fetching teams:', err);
-      setUseFallback(true);
-      setTeams(mockTeams);
       setError('Erro ao carregar equipes');
     }
   };

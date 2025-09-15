@@ -6,10 +6,8 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { pdiService } from '../../services/supabase/pdi';
 import { achievementsService } from '../../services/supabase/achievements';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { useToast } from '../common/Toast';
 import type { PDIObjective, PDIObjectiveInput } from '../../types/pdi';
-import { mockPDIObjectives } from '../../services/supabase/mockData';
 
 interface ExtendedPDIObjective extends PDIObjective {
   competency_name?: string;
@@ -31,7 +29,6 @@ const statusLabels = {
 
 const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const { showToast } = useToast();
   const [objectives, setObjectives] = useState<ExtendedPDIObjective[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,18 +45,6 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
 
   const fetchObjectives = async () => {
     if (!user) return;
-
-    if (useMockData) {
-      const enrichedObjectives = mockPDIObjectives.map(obj => ({
-        ...obj,
-        competency_name: 'React Development',
-        mentor_name: 'Maria Santos',
-        comments_count: 2
-      }));
-      setObjectives(enrichedObjectives);
-      setLoading(false);
-      return;
-    }
 
     try {
       setLoading(true);
@@ -122,17 +107,6 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
       setObjectives(enrichedObjectives);
     } catch (err) {
       console.error('Error fetching objectives:', err);
-      setUseFallback(true);
-      showToast('error', 'Erro ao carregar objetivos. Usando dados de exemplo.');
-      
-      // Use mock data as fallback
-      const enrichedObjectives = mockPDIObjectives.map(obj => ({
-        ...obj,
-        competency_name: 'React Development',
-        mentor_name: 'Maria Santos',
-        comments_count: 2
-      }));
-      setObjectives(enrichedObjectives);
       setError('Erro ao carregar objetivos. Tente novamente.');
     } finally {
       setLoading(false);
@@ -143,7 +117,7 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
     if (!user) return;
 
     try {
-      const data = await pdiService.createObjective(user.id, newObjectiveInput, useMockData, setUseFallback);
+      const data = await pdiService.createObjective(user.id, newObjectiveInput);
 
       setObjectives(prev => [data, ...prev]);
       setShowForm(false);
@@ -161,7 +135,7 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
         obj.id === id ? { ...obj, objetivo_status: newStatus } : obj
       ));
       
-      await pdiService.updateObjectiveStatus(id, newStatus, useMockData, setUseFallback);
+      await pdiService.updateObjectiveStatus(id, newStatus);
       
       // Check for achievements if objective completed
       if (newStatus === 'concluido' && user) {
@@ -185,7 +159,7 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
         obj.id === id ? { ...obj, pontos_extra: newProgress } : obj
       ));
       
-      await pdiService.updateObjectiveProgress(id, newProgress, useMockData, setUseFallback);
+      await pdiService.updateObjectiveProgress(id, newProgress);
       
       showToast('info', `Progresso atualizado para ${newProgress}%`);
     } catch (err) {
@@ -359,18 +333,10 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
       </div>
 
       {objectives.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-blue-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum objetivo encontrado</h3>
-          <p className="text-gray-600 mb-6">Comece criando seu primeiro objetivo de desenvolvimento</p>
-          <button 
-            onClick={() => setShowForm(true)}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
-          >
-            Criar Primeiro Objetivo
-          </button>
+        <div className="text-center py-8">
+          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">Nenhum objetivo encontrado</p>
+          <p className="text-sm text-gray-500">Clique em "Novo Objetivo" para começar</p>
         </div>
       )}
       

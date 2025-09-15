@@ -3,8 +3,6 @@ import { FileText, Play, BarChart3, User, AlertCircle, CheckCircle } from 'lucid
 import Badge from '../common/Badge';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
-import { mockHRTests } from '../../services/supabase/mockData';
 
 interface HRTest {
   id: string;
@@ -25,7 +23,6 @@ interface HRTestsProps {
 
 const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [tests, setTests] = useState<HRTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +42,6 @@ const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
 
   const fetchTests = async () => {
     if (!user) return;
-
-    if (useMockData) {
-      setTests(mockHRTests);
-      setLoading(false);
-      return;
-    }
 
     try {
       setLoading(true);
@@ -100,8 +91,6 @@ const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
       setTests(enrichedTests);
     } catch (err) {
       console.error('Error fetching tests:', err);
-      setUseFallback(true);
-      setTests(mockHRTests);
       setError('Erro ao carregar testes. Tente novamente.');
     } finally {
       setLoading(false);
@@ -304,18 +293,10 @@ const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
           ))}
 
           {tests.length === 0 && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum teste realizado</h3>
-              <p className="text-gray-600 mb-6">Inicie um teste de bem-estar para acompanhar sua saúde mental</p>
-              <button 
-                onClick={() => handleStartTest('wellbeing', 'Questionário de Bem-estar')}
-                className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors font-medium"
-              >
-                Iniciar Primeiro Teste
-              </button>
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p>Nenhum teste encontrado.</p>
+              <p className="text-sm">Inicie um teste usando as ferramentas acima.</p>
             </div>
           )}
         </div>

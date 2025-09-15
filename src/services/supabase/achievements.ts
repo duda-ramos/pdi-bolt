@@ -1,13 +1,7 @@
 import { supabase } from '../../lib/supabase';
-import { mockAchievements } from './mockData';
 
 export const achievementsService = {
-  async getUserAchievements(userId: string, useMockData: boolean = false, setUseFallback?: (value: boolean) => void) {
-    if (useMockData) {
-      return mockAchievements.filter(ach => ach.user_id === userId);
-    }
-
-    try {
+  async getUserAchievements(userId: string) {
     const { data, error } = await supabase
       .from('achievements')
       .select(`
@@ -20,19 +14,9 @@ export const achievementsService = {
 
     if (error) throw error;
     return data;
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
-      setUseFallback?.(true);
-      return mockAchievements.filter(ach => ach.user_id === userId);
-    }
   },
 
-  async checkAndUnlockAchievements(userId: string, useMockData: boolean = false, setUseFallback?: (value: boolean) => void) {
-    if (useMockData) {
-      return; // Mock - no actual achievement unlocking
-    }
-
-    try {
+  async checkAndUnlockAchievements(userId: string) {
     // Lógica para verificar e desbloquear conquistas baseadas em critérios
     // Por exemplo: completar 5 objetivos PDI, receber nota alta em avaliação, etc.
     
@@ -66,9 +50,5 @@ export const achievementsService = {
     }
 
     // Adicionar mais verificações de conquistas aqui...
-    } catch (error) {
-      console.error('Error checking achievements:', error);
-      setUseFallback?.(true);
-    }
   }
 };

@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import Header from '../components/Layout/Header';
 import RLSTestPanel from '../components/common/RLSTestPanel';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 import { Settings as SettingsIcon, Users, Award, Target, Database, Shield, Bell } from 'lucide-react';
 
 const Settings: React.FC = () => {
-  const { useMockData, useFallback, toggleMockData } = useFeatureFlags();
   const [activeTab, setActiveTab] = useState('general');
 
   const tabs = [
@@ -23,44 +21,6 @@ const Settings: React.FC = () => {
       case 'general':
         return (
           <div className="space-y-6">
-            {/* Data Source Settings */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fonte de Dados</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Modo de Desenvolvimento</h4>
-                    <p className="text-sm text-gray-600">
-                      Alternar entre dados reais do Supabase e dados de exemplo para desenvolvimento
-                    </p>
-                  </div>
-                  <button
-                    onClick={toggleMockData}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      useMockData ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        useMockData ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                
-                <div className="text-sm">
-                  <p className={`font-medium ${useMockData ? 'text-blue-700' : 'text-gray-700'}`}>
-                    Status: {useMockData ? 'Dados de Exemplo' : 'Dados do Supabase'}
-                  </p>
-                  {useFallback && (
-                    <p className="text-yellow-700 mt-1">
-                      ⚠️ Atualmente usando dados de exemplo devido a falha na conexão
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Configurações Gerais</h3>
               <div className="space-y-4">

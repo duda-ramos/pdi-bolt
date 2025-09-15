@@ -5,8 +5,6 @@ import { Award, TrendingUp, DollarSign, AlertCircle } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
-import { mockCareerTrack, mockCareerStages, mockCompetencies } from '../services/supabase/mockData';
 
 interface CareerTrack {
   id: string;
@@ -45,7 +43,6 @@ interface UserCompetencyScore {
 
 const Career: React.FC = () => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [careerTrack, setCareerTrack] = useState<CareerTrack | null>(null);
   const [stages, setStages] = useState<CareerStage[]>([]);
   const [competencies, setCompetencies] = useState<Competency[]>([]);
@@ -61,26 +58,6 @@ const Career: React.FC = () => {
 
   const fetchCareerData = async () => {
     if (!user) return;
-
-    if (useMockData) {
-      setCareerTrack(mockCareerTrack);
-      setStages(mockCareerStages);
-      setCompetencies(mockCompetencies.map(comp => ({
-        id: comp.id,
-        stage_id: 'mock-stage-1',
-        nome: comp.name,
-        descricao: comp.description,
-        tipo: comp.type === 'Hard' ? 'hard_skill' : 'soft_skill',
-        peso: 1.0,
-        created_at: '2023-01-01T10:00:00Z'
-      })));
-      setUserScores([
-        { competency_id: 'mock-comp-1', self_score: 7, manager_score: 6 },
-        { competency_id: 'mock-comp-2', self_score: 8, manager_score: 8 }
-      ]);
-      setLoading(false);
-      return;
-    }
 
     try {
       setLoading(true);
@@ -179,25 +156,6 @@ const Career: React.FC = () => {
 
     } catch (err) {
       console.error('Error fetching career data:', err);
-      setUseFallback(true);
-      
-      // Use mock data as fallback
-      setCareerTrack(mockCareerTrack);
-      setStages(mockCareerStages);
-      setCompetencies(mockCompetencies.map(comp => ({
-        id: comp.id,
-        stage_id: 'mock-stage-1',
-        nome: comp.name,
-        descricao: comp.description,
-        tipo: comp.type === 'Hard' ? 'hard_skill' : 'soft_skill',
-        peso: 1.0,
-        created_at: '2023-01-01T10:00:00Z'
-      })));
-      setUserScores([
-        { competency_id: 'mock-comp-1', self_score: 7, manager_score: 6 },
-        { competency_id: 'mock-comp-2', self_score: 8, manager_score: 8 }
-      ]);
-      
       setError('Erro ao carregar dados da trilha de carreira. Tente novamente.');
     } finally {
       setLoading(false);

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Bell, Search, MessageCircle } from 'lucide-react';
-import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 
 interface HeaderProps {
   title: string;
@@ -8,25 +7,8 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
-  const { useMockData, useFallback } = useFeatureFlags();
-
   return (
-    <>
-      {/* Data Source Indicator */}
-      {(useMockData || useFallback) && (
-        <div className={`px-4 py-2 text-center text-sm font-medium ${
-          useFallback 
-            ? 'bg-yellow-100 text-yellow-800 border-b border-yellow-200' 
-            : 'bg-blue-100 text-blue-800 border-b border-blue-200'
-        }`}>
-          {useFallback 
-            ? '⚠️ Usando dados de exemplo (falha na conexão com Supabase)'
-            : '🧪 Modo de desenvolvimento - dados de exemplo'
-          }
-        </div>
-      )}
-      
-      <header className="bg-white border-b border-gray-200 px-8 py-6">
+    <header className="bg-white border-b border-gray-200 px-8 py-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -74,7 +56,6 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
         </div>
       </div>
     </header>
-    </>
   );
 };
 

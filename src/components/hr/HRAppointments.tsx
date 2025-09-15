@@ -3,8 +3,6 @@ import { Calendar, Clock, User, Plus, Shield, AlertCircle, CheckCircle } from 'l
 import Badge from '../common/Badge';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
-import { mockHRRecords } from '../../services/supabase/mockData';
 
 interface HRRecord {
   id: string;
@@ -25,7 +23,6 @@ interface HRAppointmentsProps {
 
 const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [appointments, setAppointments] = useState<HRRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +42,6 @@ const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
 
   const fetchAppointments = async () => {
     if (!user) return;
-
-    if (useMockData) {
-      setAppointments(mockHRRecords);
-      setLoading(false);
-      return;
-    }
 
     try {
       setLoading(true);
@@ -100,8 +91,6 @@ const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
       setAppointments(enrichedAppointments);
     } catch (err) {
       console.error('Error fetching appointments:', err);
-      setUseFallback(true);
-      setAppointments(mockHRRecords);
       setError('Erro ao carregar consultas. Tente novamente.');
     } finally {
       setLoading(false);
@@ -256,18 +245,10 @@ const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
         })}
 
         {appointments.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhuma consulta agendada</h3>
-            <p className="text-gray-600 mb-6">Agende sua primeira consulta para começar o acompanhamento</p>
-            <button 
-              onClick={() => setShowNewForm(true)}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
-            >
-              Agendar Primeira Consulta
-            </button>
+          <div className="text-center py-8 text-gray-500">
+            <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p>Nenhuma consulta encontrada.</p>
+            <p className="text-sm">Clique em "Nova Consulta" para agendar.</p>
           </div>
         )}
       </div>

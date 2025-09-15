@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import Header from '../components/Layout/Header';
 import { Users, Plus, Target, CheckCircle, Clock, TrendingUp, Crown } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 import Badge from '../components/common/Badge';
 import ProgressBar from '../components/common/ProgressBar';
-import { mockActionGroups } from '../services/supabase/mockData';
 
 const ActionGroups: React.FC = () => {
-  const { useMockData } = useFeatureFlags();
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const handleTaskStatusChange = (taskId: string, newStatus: 'todo' | 'doing' | 'done') => {
@@ -16,8 +13,7 @@ const ActionGroups: React.FC = () => {
     console.log(`Updating task ${taskId} to status: ${newStatus}`);
     alert(`Status da tarefa atualizado para: ${newStatus === 'todo' ? 'A Fazer' : newStatus === 'doing' ? 'Em Andamento' : 'Concluído'}`);
   };
-  
-  const groups = useMockData ? mockActionGroups : [
+  const groups = [
     {
       id: '1',
       name: 'Melhoria de Processos',
@@ -39,6 +35,17 @@ const ActionGroups: React.FC = () => {
       completedTasks: 12,
       progress: 80,
       coordinator: 'Carlos Santos'
+    },
+    {
+      id: '3',
+      name: 'Inovação Tecnológica',
+      description: 'Pesquisa e implementação de novas tecnologias',
+      status: 'completed' as const,
+      members: 8,
+      tasks: 10,
+      completedTasks: 10,
+      progress: 100,
+      coordinator: 'Maria Oliveira'
     }
   ];
 
@@ -166,21 +173,6 @@ const ActionGroups: React.FC = () => {
                   );
                 })}
               </div>
-              {groups.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum grupo encontrado</h3>
-                  <p className="text-gray-600 mb-6">Crie seu primeiro grupo de ação para colaborar em projetos</p>
-                  <button 
-                    onClick={() => alert('Criando novo grupo de ação...')}
-                    className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                  >
-                    Criar Primeiro Grupo
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 

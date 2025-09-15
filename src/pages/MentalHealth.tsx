@@ -6,8 +6,6 @@ import { Heart, Calendar, MessageCircle, BarChart3, Shield, Users, AlertCircle }
 import StatCard from '../components/common/StatCard';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
-import { mockHRRecords } from '../services/supabase/mockData';
 
 interface HRStats {
   appointments: number;
@@ -18,7 +16,6 @@ interface HRStats {
 
 const MentalHealth: React.FC = () => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [selectedTab, setSelectedTab] = useState<'overview' | 'appointments' | 'tests'>('overview');
   const [stats, setStats] = useState<HRStats>({
     appointments: 0,
@@ -38,18 +35,6 @@ const MentalHealth: React.FC = () => {
 
   const fetchHRData = async () => {
     if (!user) return;
-
-    if (useMockData) {
-      setRecentConsultations(mockHRRecords);
-      setStats({
-        appointments: 2,
-        tests: 1,
-        attendedUsers: 1,
-        averageSatisfaction: '4.2/5'
-      });
-      setLoading(false);
-      return;
-    }
 
     try {
       setLoading(true);
@@ -140,14 +125,6 @@ const MentalHealth: React.FC = () => {
 
     } catch (err) {
       console.error('Error fetching HR data:', err);
-      setUseFallback(true);
-      setRecentConsultations(mockHRRecords);
-      setStats({
-        appointments: 2,
-        tests: 1,
-        attendedUsers: 1,
-        averageSatisfaction: '4.2/5'
-      });
       setError('Erro ao carregar dados de bem-estar. Tente novamente.');
     } finally {
       setLoading(false);
@@ -383,18 +360,10 @@ const MentalHealth: React.FC = () => {
                     ))}
                     
                     {recentConsultations.length === 0 && (
-                      <div className="text-center py-12">
-                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Heart className="w-8 h-8 text-blue-600" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum registro encontrado</h3>
-                        <p className="text-gray-600 mb-6">Agende sua primeira consulta para começar o acompanhamento</p>
-                        <button 
-                          onClick={handleScheduleAppointment}
-                          className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                        >
-                          Agendar Primeira Consulta
-                        </button>
+                      <div className="text-center py-8 text-gray-500">
+                        <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p>Nenhum registro encontrado.</p>
+                        <p className="text-sm">Agende uma consulta para começar.</p>
                       </div>
                     )}
                   </div>

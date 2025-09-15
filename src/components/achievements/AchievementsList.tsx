@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Award, Star, Trophy, Target, Users, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { achievementsService } from '../../services/supabase/achievements';
 
 const AchievementsList: React.FC = () => {
   const { user } = useAuth();
-  const { useMockData, setUseFallback } = useFeatureFlags();
   const [achievements, setAchievements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +18,7 @@ const AchievementsList: React.FC = () => {
     if (!user) return;
     
     try {
-      const data = await achievementsService.getUserAchievements(user.id, useMockData, setUseFallback);
+      const data = await achievementsService.getUserAchievements(user.id);
       setAchievements(data || []);
     } catch (error) {
       console.error('Error loading achievements:', error);
@@ -79,18 +77,10 @@ const AchievementsList: React.FC = () => {
         ))}
         
         {achievements.length === 0 && (
-          <div className="col-span-full text-center py-12">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trophy className="w-8 h-8 text-yellow-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhuma conquista ainda</h3>
-            <p className="text-gray-600 mb-6">Complete objetivos PDI para desbloquear suas primeiras conquistas!</p>
-            <button 
-              onClick={() => window.location.hash = '#pdi'}
-              className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition-colors font-medium"
-            >
-              Ver Objetivos PDI
-            </button>
+          <div className="col-span-full text-center py-8 text-gray-500">
+            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p>Nenhuma conquista desbloqueada ainda.</p>
+            <p className="text-sm">Complete objetivos PDI para desbloquear conquistas!</p>
           </div>
         )}
       </div>

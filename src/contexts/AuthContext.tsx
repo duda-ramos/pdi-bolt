@@ -267,7 +267,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('📧 AuthProvider: User created but needs email confirmation');
         return { 
           success: true, 
-          message: 'Conta criada com sucesso! Verifique seu email (incluindo spam) para confirmar a conta. Após clicar no link de confirmação, você poderá fazer login.',
+          message: 'Conta criada com sucesso! Verifique seu e-mail para confirmar a conta.',
           needsConfirmation: true 
         };
       }

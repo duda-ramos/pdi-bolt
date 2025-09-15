@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Award, Eye, EyeOff, Mail, Lock, User, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,8 @@ const LoginForm: React.FC = () => {
   const [role, setRole] = useState<'admin' | 'gestor' | 'colaborador' | 'rh'>('colaborador');
   const [showPassword, setShowPassword] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [emailForConfirmation, setEmailForConfirmation] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const { login, signup, loading } = useAuth();
@@ -38,7 +41,9 @@ const LoginForm: React.FC = () => {
       if (isSignup) {
         const result = await signup(email, password, nome, role);
         if (result?.needsConfirmation) {
-          setMessage(result.message);
+          setEmailForConfirmation(email);
+          setShowEmailConfirmation(true);
+          setMessage('');
         } else {
           setMessage(result?.message || 'Conta criada com sucesso!');
         }
@@ -69,6 +74,103 @@ const LoginForm: React.FC = () => {
       }
     }
   };
+
+  const handleResendConfirmation = async () => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: emailForConfirmation
+      });
+      
+      if (error) throw error;
+      
+      setMessage('E-mail de confirmação reenviado com sucesso!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao reenviar confirmação';
+      setError(errorMessage);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowEmailConfirmation(false);
+    setIsSignup(false);
+    setEmailForConfirmation('');
+    setError('');
+    setMessage('');
+  };
+
+  // Email Confirmation Screen
+  if (showEmailConfirmation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-4">
+              <Mail className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Confirme seu E-mail</h1>
+            <p className="text-gray-600 mt-2">Quase lá! Precisamos verificar seu e-mail.</p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <Mail className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">E-mail enviado para:</h3>
+                  <p className="text-sm text-blue-700 font-mono mt-1">{emailForConfirmation}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>📧 Verifique sua caixa de entrada (e spam) para encontrar o e-mail de confirmação.</p>
+              <p>🔗 Clique no link de confirmação para ativar sua conta.</p>
+              <p>⏰ O link expira em 24 horas.</p>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {/* Success Message */}
+            {message && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {message}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                onClick={handleResendConfirmation}
+                disabled={loading}
+                className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {loading ? 'Reenviando...' : 'Reenviar E-mail de Confirmação'}
+              </button>
+
+              <button
+                onClick={handleBackToLogin}
+                className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all"
+              >
+                Voltar ao Login
+              </button>
+            </div>
+
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                Não recebeu o e-mail? Verifique sua pasta de spam ou aguarde alguns minutos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">

@@ -1,5 +1,64 @@
 # Security Configuration Guide
 
+## Matriz de Acesso por Tabela e Função
+
+| Tabela | Admin | RH | Gestor | Colaborador |
+|--------|-------|----|---------| ------------|
+| **profiles** | CRUD total | CRUD total | R próprio + liderados, U próprio | R próprio + gestor, U próprio |
+| **pdi_objectives** | CRUD total | CRUD total | CRUD liderados | CRUD próprios |
+| **assessments** | CRUD total | CRUD total | CRUD liderados | CRUD próprios |
+| **achievements** | CRUD total | CRU total | R liderados | R próprios |
+| **salary_history** | CRUD total | CRUD total | R liderados* | R próprios |
+| **hr_records** | CRUD total | CRUD total | - | R próprios, C agendamentos |
+| **hr_tests** | CRUD total | CRUD total | - | RU próprios |
+| **hr_tasks** | CRUD total | CRUD total | - | R próprias, U conclusão |
+| **touchpoints** | CRUD total | CRUD total | CRUD próprios | R próprios |
+| **pdi_comments** | CRUD total | CRUD total | CRUD em obj. liderados | CRUD em obj. próprios |
+| **action_groups** | CRUD total | - | CRUD próprios + R todos | R participação |
+| **action_group_members** | CRUD total | - | CRUD próprios grupos | R própria participação |
+| **action_group_tasks** | CRUD total | - | CRUD próprios grupos | RU próprias tarefas |
+| **teams** | CRUD total | - | R todos | R todos |
+| **career_tracks** | CRUD total | - | R todos | R todos |
+| **career_stages** | CRUD total | - | R todos | R todos |
+| **competencies** | CRUD total | - | R todos | R todos |
+
+*Legenda: C=Create, R=Read, U=Update, D=Delete*
+*salary_history para gestores: apenas se necessário para gestão*
+
+## Políticas RLS Implementadas
+
+### Funções Auxiliares
+- `get_user_role(uuid)`: Retorna o papel do usuário
+- `is_manager_of(manager_uuid, employee_uuid)`: Verifica relação hierárquica
+- `is_admin_or_hr(uuid)`: Verifica se é admin ou RH
+
+### Princípios das Políticas
+1. **Menor Privilégio**: Cada usuário tem acesso apenas ao necessário
+2. **Não Recursão**: Políticas evitam loops infinitos
+3. **Performance**: Índices otimizam consultas RLS
+4. **Auditabilidade**: Todas as ações são rastreáveis
+
+### Tabelas Críticas com RLS
+- ✅ `profiles` - Dados pessoais e profissionais
+- ✅ `pdi_objectives` - Objetivos de desenvolvimento
+- ✅ `assessments` - Avaliações de competências
+- ✅ `achievements` - Conquistas dos usuários
+- ✅ `salary_history` - Informações salariais sensíveis
+- ✅ `hr_records` - Registros de consultas RH
+- ✅ `hr_tests` - Testes psicológicos
+- ✅ `hr_tasks` - Tarefas de RH
+- ✅ `touchpoints` - Reuniões 1:1
+- ✅ `pdi_comments` - Comentários em objetivos
+- ✅ `action_groups` - Grupos de ação
+- ✅ `action_group_members` - Membros dos grupos
+- ✅ `action_group_tasks` - Tarefas dos grupos
+
+### Tabelas Organizacionais (Acesso Público Interno)
+- ✅ `teams` - Estrutura organizacional
+- ✅ `career_tracks` - Trilhas de carreira
+- ✅ `career_stages` - Estágios de carreira
+- ✅ `competencies` - Competências organizacionais
+
 ## Environment Variables
 
 ### Development
@@ -39,65 +98,36 @@ Ensure the following tables have RLS enabled and proper policies:
 
 ## RLS Policy Examples
 
-### User Profile Access
+Todas as políticas RLS foram implementadas no arquivo `supabase/policies.sql`.
+
+### Testes de RLS
+
+Para testar as políticas RLS:
+
+1. **Teste de Isolamento de Dados:**
 ```sql
--- Users can manage their own profile (view and update)
-CREATE POLICY "users_can_manage_own_profile" ON profiles
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- Como colaborador, deve ver apenas próprios dados
+SELECT * FROM pdi_objectives; -- Deve retornar apenas objetivos do usuário
 ```
 
-### Manager Access (Non-Recursive)
+2. **Teste de Acesso Hierárquico:**
 ```sql
--- Managers can view their direct reports using foreign key relationship
-CREATE POLICY "managers_can_view_direct_reports" ON profiles
-  FOR SELECT USING (gestor_id = auth.uid());
+-- Como gestor, deve ver dados de liderados
+SELECT * FROM profiles WHERE gestor_id = auth.uid(); -- Deve retornar liderados
 ```
 
-### Team Relationship Access
+3. **Teste de Violação de Acesso:**
 ```sql
--- Team members can view related profiles (manager, direct reports)
-CREATE POLICY "team_members_can_view_related_profiles" ON profiles
-  FOR SELECT USING (
-    auth.uid() = user_id OR
-    user_id = (SELECT gestor_id FROM profiles WHERE user_id = auth.uid() LIMIT 1) OR
-    gestor_id = auth.uid()
-  );
+-- Tentativa de acesso não autorizado deve falhar
+SELECT * FROM salary_history WHERE user_id != auth.uid(); -- Deve retornar vazio para colaborador
 ```
 
-### Important: Avoiding Infinite Recursion
+### Monitoramento de Segurança
 
-**CRITICAL:** Never create RLS policies that query the same table they're protecting within the policy condition. This causes infinite recursion.
-
-**❌ BAD - Causes Infinite Recursion:**
-```sql
--- This will cause infinite recursion!
-CREATE POLICY "bad_policy" ON profiles
-  FOR SELECT USING (
-    (SELECT role FROM profiles WHERE user_id = auth.uid()) = 'admin'
-  );
-```
-
-**✅ GOOD - Uses Direct Relationships:**
-```sql
--- This uses direct foreign key relationships
-CREATE POLICY "good_policy" ON profiles
-  FOR SELECT USING (gestor_id = auth.uid());
-```
-
-### HR and Admin Access
-
-For HR and Admin roles that need full access, consider these approaches:
-
-1. **Custom JWT Claims (Recommended):**
-   - Store user role as a custom claim in the JWT
-   - Use `auth.jwt() ->> 'app_role'` in policies
-
-2. **Application-Level Logic:**
-   - Handle admin operations in your application code
-   - Use service role key for admin-only operations
-
-3. **Separate Admin Interface:**
-   - Create admin-specific endpoints that bypass RLS
+1. **Logs de Acesso**: Monitore tentativas de acesso negado
+2. **Auditoria Regular**: Revise políticas mensalmente
+3. **Testes Automatizados**: Execute testes de RLS no CI/CD
+4. **Alertas**: Configure alertas para tentativas de violação
 
 ## Security Best Practices
 
@@ -116,6 +146,21 @@ For HR and Admin roles that need full access, consider these approaches:
 3. Check that no sensitive keys are exposed in client code
 4. Ensure all API endpoints respect user permissions
 5. Test authentication flows thoroughly
+
+## Testes de RLS Automatizados
+
+Execute os testes de RLS regularmente:
+
+```bash
+# Executar testes de políticas RLS
+npm run test:rls
+```
+
+Os testes verificam:
+- Isolamento de dados por usuário
+- Acesso hierárquico correto
+- Prevenção de escalação de privilégios
+- Performance das consultas com RLS
 
 ## Emergency Procedures
 

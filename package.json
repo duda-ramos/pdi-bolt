@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:rls": "node -e \"import('./src/services/supabase/rls-tests.js').then(m => m.runRLSTests()).then(console.log).catch(console.error)\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.2",

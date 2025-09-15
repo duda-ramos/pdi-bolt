@@ -1,58 +1,22 @@
 import React, { useState } from 'react';
-import { useState, useEffect } from 'react';
 import Header from '../components/Layout/Header';
 import { useAuth } from '../contexts/AuthContext';
-import { profileService } from '../services/supabase/profiles';
-import AvatarUpload from '../components/common/AvatarUpload';
-import { useToast } from '../components/common/Toast';
 import { MapPin, Calendar, User, Mail, Award, TrendingUp, Edit3, Save, X, Camera } from 'lucide-react';
 import Badge from '../components/common/Badge';
 
 const Profile: React.FC = () => {
-  const { user, updateProfile, uploadAvatar } = useAuth();
-  const { showToast } = useToast();
+  const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
-  const [nextObjective, setNextObjective] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [editForm, setEditForm] = useState({
     nome: user?.nome || '',
     bio: user?.bio || '',
     localizacao: user?.localizacao || '',
     formacao: user?.formacao || '',
-    trilha_id: user?.trilha_id || '',
     avatar: user?.avatar || ''
   });
   const [saving, setSaving] = useState(false);
 
   if (!user) return null;
-
-  useEffect(() => {
-    if (user) {
-      loadProfileData();
-    }
-  }, [user]);
-
-  const loadProfileData = async () => {
-    try {
-      setLoading(true);
-      
-      // Load salary history
-      const salaryData = await profileService.getSalaryHistory(user.id);
-      setSalaryHistory(salaryData);
-      
-      // Load next objective
-      const objective = await profileService.getNextObjective(user.id);
-      setNextObjective(objective);
-      
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-      showToast('error', 'Erro ao carregar dados do perfil');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEdit = () => {
     setEditForm({
@@ -60,7 +24,6 @@ const Profile: React.FC = () => {
       bio: user.bio || '',
       localizacao: user.localizacao || '',
       formacao: user.formacao || '',
-      trilha_id: user.trilha_id || '',
       avatar: user.avatar || ''
     });
     setIsEditing(true);
@@ -69,13 +32,12 @@ const Profile: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateProfile(editForm, avatarFile || undefined);
+      await updateProfile(editForm);
       setIsEditing(false);
-      setAvatarFile(null);
-      showToast('success', 'Perfil atualizado com sucesso!');
+      alert('Perfil atualizado com sucesso!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      showToast('error', 'Erro ao atualizar perfil. Tente novamente.');
+      alert('Erro ao atualizar perfil. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -88,10 +50,8 @@ const Profile: React.FC = () => {
       bio: user.bio || '',
       localizacao: user.localizacao || '',
       formacao: user.formacao || '',
-      trilha_id: user.trilha_id || '',
       avatar: user.avatar || ''
     });
-    setAvatarFile(null);
   };
 
   const calculateTenure = () => {
@@ -111,6 +71,10 @@ const Profile: React.FC = () => {
     return `${months} mes${months !== 1 ? 'es' : ''}`;
   };
 
+  const salaryHistory = [
+    { date: user?.data_admissao || '2021-06-01', amount: 4000, type: 'Contratação', description: 'Salário inicial' }
+  ];
+
   return (
     <div>
       <Header 
@@ -126,19 +90,26 @@ const Profile: React.FC = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-6">
-                  {isEditing ? (
-                    <AvatarUpload
-                      currentAvatar={user.avatar}
-                      onAvatarChange={setAvatarFile}
-                      className="w-20 h-20"
-                    />
-                  ) : (
+                  <div className="relative">
                     <img 
                       src={user.avatar}
                       alt={user.nome}
                       className="w-20 h-20 rounded-full object-cover border-4 border-gray-100"
                     />
-                  )}
+                    {isEditing && (
+                      <button
+                        onClick={() => {
+                          const newAvatar = prompt('URL da nova foto de perfil:', editForm.avatar);
+                          if (newAvatar !== null) {
+                            setEditForm(prev => ({ ...prev, avatar: newAvatar }));
+                          }
+                        }}
+                        className="absolute -bottom-1 -right-1 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
+                      >
+                        <Camera className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                   <div className="flex-1">
                     {isEditing ? (
                       <input
@@ -243,20 +214,6 @@ const Profile: React.FC = () => {
                   ) : (
                     <p className="text-gray-600 text-sm">{user.formacao || 'Não informado'}</p>
                   )}
-                  
-                  <h4 className="font-medium text-gray-900 mt-4 mb-2">Trilha de Carreira</h4>
-                  {isEditing ? (
-                    <select
-                      value={editForm.trilha_id}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, trilha_id: e.target.value }))}
-                      className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Selecionar trilha</option>
-                      {/* Aqui você pode buscar as trilhas disponíveis */}
-                    </select>
-                  ) : (
-                    <p className="text-gray-600 text-sm">{user.trilha_id || 'Não definida'}</p>
-                  )}
                 </div>
               </div>
             </div>
@@ -265,40 +222,26 @@ const Profile: React.FC = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Histórico Salarial</h3>
               
-              {loading ? (
-                <div className="text-center py-4">
-                  <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                </div>
-              ) : (
               <div className="space-y-4">
                 {salaryHistory.map((entry, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <div className="flex items-center space-x-3">
                         <span className="font-medium text-gray-900">
-                          R$ {entry.valor.toLocaleString('pt-BR')}
+                          R$ {entry.amount.toLocaleString('pt-BR')}
                         </span>
-                        <Badge variant="info">
-                          Ajuste Salarial
+                        <Badge variant={entry.type === 'Promoção' ? 'success' : 'info'}>
+                          {entry.type}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {entry.data_fim ? 'Período encerrado' : 'Salário atual'}
-                      </p>
+                      <p className="text-sm text-gray-600 mt-1">{entry.description}</p>
                     </div>
                     <span className="text-sm text-gray-500">
-                      {new Date(entry.data_inicio).toLocaleDateString('pt-BR')}
+                      {new Date(entry.date).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                 ))}
-                
-                {salaryHistory.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    <p>Nenhum histórico salarial encontrado.</p>
-                  </div>
-                )}
               </div>
-              )}
             </div>
           </div>
           
@@ -338,27 +281,17 @@ const Profile: React.FC = () => {
                 <TrendingUp className="w-5 h-5" />
                 <h3 className="font-semibold">Próximo Objetivo</h3>
               </div>
-              
-              {nextObjective ? (
-                <>
-                  <p className="text-blue-100 mb-4">
-                    <span className="font-semibold text-white">{nextObjective.titulo}</span>
-                  </p>
-                  <div className="bg-white/20 rounded-lg p-3">
-                    <p className="text-sm text-blue-100 mb-2">Descrição:</p>
-                    <p className="text-sm text-white">{nextObjective.descricao}</p>
-                    {nextObjective.competencies && (
-                      <p className="text-sm text-blue-100 mt-2">
-                        Competência: {nextObjective.competencies.nome}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="text-blue-100">
-                  Nenhum objetivo ativo encontrado. Crie um novo objetivo PDI para começar!
-                </p>
-              )}
+              <p className="text-blue-100 mb-4">
+                Evoluir para <span className="font-semibold text-white">Desenvolvedor Sênior</span>
+              </p>
+              <div className="bg-white/20 rounded-lg p-3">
+                <p className="text-sm text-blue-100 mb-2">Competências necessárias:</p>
+                <ul className="text-sm space-y-1">
+                  <li>• Liderança técnica (6/10)</li>
+                  <li>• Arquitetura de software (5/10)</li>
+                  <li>• Mentoria (4/10)</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

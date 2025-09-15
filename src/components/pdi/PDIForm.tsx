@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Calendar, Award, UserCheck } from 'lucide-react';
-import { pdiService } from '../../services/supabase/pdi';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PDIObjectiveInput } from '../../types/pdi';
 
@@ -43,12 +43,49 @@ const PDIForm: React.FC<PDIFormProps> = ({ onSubmit, onCancel }) => {
     if (!user) return;
 
     try {
-      // Get competencies for user's track
-      const competenciesData = await pdiService.getCompetencies(user.trilha_id);
-      setCompetencies(competenciesData || []);
+      // Get user's career track competencies
+      let userTrackId = user.trilha_id;
       
-      // Get potential mentors
-      const mentorsData = await pdiService.getMentors();
+      if (!userTrackId) {
+        const { data: tracks } = await supabase
+          .from('career_tracks')
+          .select('id')
+          .limit(1);
+        
+        if (tracks && tracks.length > 0) {
+          userTrackId = tracks[0].id;
+        }
+      }
+
+      if (userTrackId) {
+        // Get stages for the track
+        const { data: stages } = await supabase
+          .from('career_stages')
+          .select('id')
+          .eq('trilha_id', userTrackId);
+
+        if (stages && stages.length > 0) {
+          const stageIds = stages.map(s => s.id);
+          
+          // Get competencies for these stages
+          const { data: competenciesData } = await supabase
+            .from('competencies')
+            .select('id, nome, tipo')
+            .in('stage_id', stageIds)
+            .order('nome');
+          
+          setCompetencies(competenciesData || []);
+        }
+      }
+
+      // Get potential mentors (users with gestor or admin role)
+      const { data: mentorsData } = await supabase
+        .from('profiles')
+        .select('user_id, nome')
+        .in('role', ['gestor', 'admin'])
+        .eq('status', 'ativo')
+        .order('nome');
+      
       setMentors(mentorsData || []);
 
     } catch (error) {
@@ -137,7 +174,7 @@ const PDIForm: React.FC<PDIFormProps> = ({ onSubmit, onCancel }) => {
                 <option value="">Selecione uma competência</option>
                 {competencies.map((competency) => (
                   <option key={competency.id} value={competency.id}>
-                    {competency.nome} ({competency.tipo === 'hard_skill' ? 'Hard' : 'Soft'} Skill)
+                    {competency.nome} ({competency.tipo === 'hard_skill' ? 'Hard' : 'Soft'})
                   </option>
                 ))}
               </select>

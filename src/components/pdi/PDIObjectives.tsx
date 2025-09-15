@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle, Clock, AlertCircle, MessageSquare, User, Award, UserCheck } from 'lucide-react';
 import Badge from '../common/Badge';
 import PDIForm from './PDIForm';
-import { pdiService } from '../../services/supabase/pdi';
-import { achievementsService } from '../../services/supabase/achievements';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../common/Toast';
 import type { PDIObjective, PDIObjectiveInput } from '../../types/pdi';
 
 interface ExtendedPDIObjective extends PDIObjective {
@@ -28,7 +26,6 @@ const statusLabels = {
 
 const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
   const { user } = useAuth();
-  const { showToast } = useToast();
   const [objectives, setObjectives] = useState<ExtendedPDIObjective[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,57 +112,71 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
     if (!user) return;
 
     try {
-      const data = await pdiService.createObjective(user.id, newObjectiveInput);
+      const { data, error: insertError } = await supabase
+        .from('pdi_objectives')
+        .insert([{
+          colaborador_id: user.id,
+          created_by: user.id,
+          titulo: newObjectiveInput.titulo,
+          descricao: newObjectiveInput.description,
+          data_inicio: newObjectiveInput.data_inicio,
+          data_fim: newObjectiveInput.data_fim,
+          objetivo_status: 'pendente' as const,
+          pontos_extra: 0
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
 
       setObjectives(prev => [data, ...prev]);
       setShowForm(false);
-      showToast('success', 'Objetivo criado com sucesso!');
+      alert('Objetivo criado com sucesso!');
     } catch (err) {
       console.error('Error creating objective:', err);
-      showToast('error', 'Erro ao criar objetivo. Tente novamente.');
+      alert('Erro ao criar objetivo. Tente novamente.');
     }
   };
 
   const handleStatusChange = async (id: string, newStatus: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado') => {
     try {
-      // Optimistic update
+      const { error: updateError } = await supabase
+        .from('pdi_objectives')
+        .update({ objetivo_status: newStatus })
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
       setObjectives(prev => prev.map(obj => 
         obj.id === id ? { ...obj, objetivo_status: newStatus } : obj
       ));
-      
-      await pdiService.updateObjectiveStatus(id, newStatus);
-      
-      // Check for achievements if objective completed
-      if (newStatus === 'concluido' && user) {
-        await achievementsService.checkAndUnlockAchievements(user.id);
-      }
-      
-      showToast('success', 'Status atualizado com sucesso!');
     } catch (err) {
       console.error('Error updating objective status:', err);
-      showToast('error', 'Erro ao atualizar status. Tente novamente.');
-      
-      // Revert optimistic update
-      fetchObjectives();
+      alert('Erro ao atualizar status. Tente novamente.');
     }
   };
 
   const handleProgressUpdate = async (id: string, newProgress: number) => {
     try {
-      // Optimistic update
+      const { error: updateError } = await supabase
+        .from('pdi_objectives')
+        .update({ pontos_extra: newProgress })
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
       setObjectives(prev => prev.map(obj => 
         obj.id === id ? { ...obj, pontos_extra: newProgress } : obj
       ));
-      
-      await pdiService.updateObjectiveProgress(id, newProgress);
-      
-      showToast('info', `Progresso atualizado para ${newProgress}%`);
     } catch (err) {
       console.error('Error updating objective progress:', err);
-      showToast('error', 'Erro ao atualizar progresso. Tente novamente.');
-      
-      // Revert optimistic update
-      fetchObjectives();
+      alert('Erro ao atualizar progresso. Tente novamente.');
     }
   };
 

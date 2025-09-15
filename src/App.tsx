@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { ToastProvider } from './components/common/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import Sidebar from './components/Layout/Sidebar';
@@ -85,11 +84,9 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ToastProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

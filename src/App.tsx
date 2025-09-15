@@ -14,6 +14,7 @@ import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import LoginForm from './components/auth/LoginForm';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import DebugPanel from './components/common/DebugPanel';
 
 type PageType = 'dashboard' | 'profile' | 'teams' | 'career' | 'pdi' | 'competencies' | 'action-groups' | 'mental-health' | 'settings';
 
@@ -67,6 +68,7 @@ function App() {
     return (
       <div className="min-h-screen bg-gray-50">
         <LoginForm />
+        {process.env.NODE_ENV === 'development' && <DebugPanel />}
       </div>
     );
   }
@@ -82,6 +84,7 @@ function App() {
           {renderPage()}
         </main>
       </div>
+      {process.env.NODE_ENV === 'development' && <DebugPanel />}
     </div>
   );
 }

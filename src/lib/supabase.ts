@@ -47,7 +47,9 @@ export const getSupabaseClient = (): SupabaseClient<Database> => {
         auth: {
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: false // Desabilitar para evitar problemas de roteamento
+          detectSessionInUrl: false, // Desabilitar para evitar problemas de roteamento
+          flowType: 'pkce',
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
         },
         global: {
           headers: {
@@ -179,21 +181,12 @@ export const createUserProfile = async (userId: string, email: string, profileDa
           .eq('user_id', userId)
           .single()
         
-        detectSessionInUrl: false, // Desabilitar para evitar problemas de roteamento
-        flowType: 'pkce'
+        if (fetchError) {
           console.error('❌ Error fetching existing profile:', fetchError)
           throw fetchError
         }
         
         return existingData
-      },
-      // Garantir URLs válidas para redirecionamento
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-        flowType: 'pkce',
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
       }
       
       console.error('❌ Error creating user profile:', error)

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
+import { useFeatureFlags } from './contexts/FeatureFlagContext';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
@@ -19,6 +20,7 @@ type PageType = 'dashboard' | 'profile' | 'teams' | 'career' | 'pdi' | 'competen
 
 function App() {
   const { user, loading } = useAuth();
+  const { useFallback } = useFeatureFlags();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
 
   console.log('✅ App: Rendering with user:', user?.id, 'loading:', loading);
@@ -75,10 +77,9 @@ function App() {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onNavigate={setCurrentPage} currentPage={currentPage} />
       <div className="flex">
         <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
-        <main className="flex-1 ml-64 p-8">
+        <main className="flex-1 ml-64">
           {renderPage()}
         </main>
       </div>

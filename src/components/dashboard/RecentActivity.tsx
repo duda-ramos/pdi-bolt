@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, MessageCircle, Award, TrendingUp, Clock } from 'lucide-react';
 import Badge from '../common/Badge';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { dashboardService } from '../../services/supabase/dashboard';
 
 const RecentActivity: React.FC = () => {
   const { user } = useAuth();
+  const { useMockData, setUseFallback } = useFeatureFlags();
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +21,7 @@ const RecentActivity: React.FC = () => {
     if (!user) return;
     
     try {
-      const data = await dashboardService.getRecentActivity(user.id, user.role);
+      const data = await dashboardService.getRecentActivity(user.id, user.role, useMockData, setUseFallback);
       setActivities(data);
     } catch (error) {
       console.error('Error loading activities:', error);

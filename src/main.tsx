@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AuthProvider } from './contexts/AuthContext';
+import { FeatureFlagProvider } from './contexts/FeatureFlagContext';
+import { ToastProvider } from './components/common/Toast';
 import './index.css';
 
 console.log('🎬 main.tsx: File loaded, starting application...');
@@ -18,9 +20,13 @@ if (!rootElement) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <FeatureFlagProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ToastProvider>
+    </FeatureFlagProvider>
   </StrictMode>
 );
 

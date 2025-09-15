@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Target, Award, TrendingUp, Users, Brain, CheckCircle } from 'lucide-react';
 import StatCard from '../common/StatCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { dashboardService } from '../../services/supabase/dashboard';
 
 const DashboardStats: React.FC = () => {
   const { user } = useAuth();
+  const { useMockData, setUseFallback } = useFeatureFlags();
   const [stats, setStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +21,7 @@ const DashboardStats: React.FC = () => {
     if (!user) return;
     
     try {
-      const data = await dashboardService.getStats(user.id, user.role);
+      const data = await dashboardService.getStats(user.id, user.role, useMockData, setUseFallback);
       setStats(data);
     } catch (error) {
       console.error('Error loading stats:', error);

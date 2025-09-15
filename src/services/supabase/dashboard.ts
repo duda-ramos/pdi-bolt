@@ -1,7 +1,13 @@
 import { supabase } from '../../lib/supabase';
+import { mockDashboardStats, mockRecentActivity } from './mockData';
 
 export const dashboardService = {
-  async getStats(userId: string, userRole: string) {
+  async getStats(userId: string, userRole: string, useMockData: boolean = false, setUseFallback?: (value: boolean) => void) {
+    if (useMockData) {
+      return mockDashboardStats[userRole as keyof typeof mockDashboardStats] || {};
+    }
+
+    try {
     const stats: Record<string, any> = {};
 
     switch (userRole) {
@@ -99,9 +105,19 @@ export const dashboardService = {
     }
 
     return stats;
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+      setUseFallback?.(true);
+      return mockDashboardStats[userRole as keyof typeof mockDashboardStats] || {};
+    }
   },
 
-  async getRecentActivity(userId: string, userRole: string) {
+  async getRecentActivity(userId: string, userRole: string, useMockData: boolean = false, setUseFallback?: (value: boolean) => void) {
+    if (useMockData) {
+      return mockRecentActivity;
+    }
+
+    try {
     const activities: any[] = [];
 
     // PDI Objectives
@@ -161,5 +177,10 @@ export const dashboardService = {
     return activities
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 20);
+    } catch (error) {
+      console.error('Error loading recent activity:', error);
+      setUseFallback?.(true);
+      return mockRecentActivity;
+    }
   }
 };

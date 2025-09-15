@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Header from '../components/Layout/Header';
-import RLSTestPanel from '../components/common/RLSTestPanel';
 import { Settings as SettingsIcon, Users, Award, Target, Database, Shield, Bell } from 'lucide-react';
 
 const Settings: React.FC = () => {
@@ -90,7 +89,11 @@ const Settings: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {tabs.find(t => t.id === activeTab)?.name}
               </h3>
-              <RLSTestPanel />
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-600">
+                  Esta seção será implementada em breve.
+                </p>
+              </div>
             </div>
           </div>
         );

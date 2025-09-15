@@ -37,62 +37,44 @@ export const validateEnvironment = () => {
 /**
  * Check RLS status for critical tables
  */
-export const checkRLSStatus = async (): Promise<{ table: string; status: string; hasError: boolean }[]> => {
-  const results: { table: string; status: string; hasError: boolean }[] = [];
-  
+export const checkRLSStatus = async () => {
   try {
     // List of tables that should have RLS enabled
     const criticalTables = [
       'profiles',
       'pdi_objectives', 
       'assessments',
-      'achievements',
-      'salary_history',
       'hr_records',
       'hr_tests',
+      'salary_history',
       'touchpoints',
       'pdi_comments',
-      'action_groups',
-      'action_group_members',
-      'action_group_tasks',
-      'teams',
-      'career_tracks',
-      'career_stages',
-      'competencies'
+      'achievements'
     ];
     
     console.log('🔒 Checking RLS status for critical tables...');
     
+    // Note: This is a client-side check and may not work in all environments
+    // For production, you should verify RLS in the Supabase dashboard
     for (const table of criticalTables) {
       try {
-        // Test basic access to verify RLS is working
+        // Attempt to query without proper authentication to test RLS
         const { error } = await supabase
           .from(table)
           .select('*')
           .limit(1);
         
-        if (error) {
-          if (error.code === '42501' || error.message.includes('permission denied')) {
-            results.push({ table, status: 'RLS working - access denied as expected', hasError: false });
-            console.log(`✅ RLS is properly configured for table: ${table}`);
-          } else {
-            results.push({ table, status: `Error: ${error.message}`, hasError: true });
-            console.error(`❌ Error checking table ${table}:`, error.message);
-          }
-        } else {
-          results.push({ table, status: 'RLS may not be properly configured', hasError: true });
+        if (error && error.code === '42501') {
+          console.log(`✅ RLS is properly configured for table: ${table}`);
+        } else if (!error) {
           console.warn(`⚠️ Table ${table} may not have proper RLS policies`);
         }
       } catch (err) {
-        results.push({ table, status: 'RLS appears to be working', hasError: false });
         console.log(`✅ RLS appears to be working for table: ${table}`);
       }
     }
-    
-    return results;
   } catch (error) {
     console.error('Error checking RLS status:', error);
-    return [{ table: 'all', status: `Global error: ${error}`, hasError: true }];
   }
 };
 

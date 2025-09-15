@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Layout/Header';
 import { useAuth } from '../contexts/AuthContext';
 import { profileService } from '../services/supabase/profiles';

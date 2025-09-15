@@ -1,4 +1,3 @@
-import React from 'react';
 import React, { useState, useEffect } from 'react';
 import { Target, Award, TrendingUp, Users, Brain, CheckCircle } from 'lucide-react';
 import StatCard from '../common/StatCard';

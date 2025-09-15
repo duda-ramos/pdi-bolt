@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle, Clock, AlertCircle, MessageSquare, User, Award, UserCheck } from 'lucide-react';
 import Badge from '../common/Badge';
 import PDIForm from './PDIForm';
-import { getSupabaseClient } from '../../lib/supabase';
 import { pdiService } from '../../services/supabase/pdi';
 import { achievementsService } from '../../services/supabase/achievements';
 import { useAuth } from '../../contexts/AuthContext';
@@ -50,7 +49,6 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
       setLoading(true);
       setError(null);
 
-      const supabase = getSupabaseClient();
       const { data, error: fetchError } = await supabase
         .from('pdi_objectives')
         .select('*')

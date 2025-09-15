@@ -147,7 +147,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Timeout para evitar travamento na busca do perfil
       const profilePromise = getUserProfile(supabaseUser.id);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile loading timeout')), 10000)
+        setTimeout(() => reject(new Error('Profile loading timeout')), 5000)
       );
       
       const profile = await Promise.race([profilePromise, timeoutPromise]);

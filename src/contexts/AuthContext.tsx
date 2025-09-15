@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { measureAsync } from '../utils/performance';
-import { supabase, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase-client';
+import { supabase, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/auth';
 

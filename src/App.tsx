@@ -13,13 +13,17 @@ import Teams from './pages/Teams';
 import ActionGroups from './pages/ActionGroups';
 import Settings from './pages/Settings';
 
+console.log('🚀 App.tsx: File loaded and parsed');
+
 const AppContent: React.FC = () => {
+  console.log('🎯 AppContent: Component function called');
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
   console.log('🎯 App render state:', { hasUser: !!user, loading, currentPage });
 
   if (loading) {
+    console.log('⏳ AppContent: Showing loading state');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -31,10 +35,12 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
+    console.log('👤 AppContent: No user found, showing login form');
     console.log('👤 No user found, showing login form');
     return <LoginForm />;
   }
 
+  console.log('✅ AppContent: User authenticated, showing main app');
   console.log('✅ User authenticated, showing main app');
 
   const renderPage = () => {
@@ -73,6 +79,7 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  console.log('🚀 App: Component mounting');
   console.log('🚀 App component mounting');
   
   return (
@@ -83,5 +90,7 @@ function App() {
     </ErrorBoundary>
   );
 }
+
+console.log('📄 App.tsx: File execution completed');
 
 export default App;

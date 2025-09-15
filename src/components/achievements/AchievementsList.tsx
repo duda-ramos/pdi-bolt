@@ -1,4 +1,3 @@
-import React from 'react';
 import React, { useState, useEffect } from 'react';
 import { Award, Star, Trophy, Target, Users, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';

@@ -6,6 +6,8 @@ import { Play, BarChart3, FileText, AlertCircle } from 'lucide-react';
 import Badge from '../common/Badge';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureFlags } from '../contexts/FeatureFlagContext';
+import { mockCompetencies } from '../services/supabase/mockData';
 
 interface Competency {
   id: string;
@@ -41,6 +43,7 @@ interface CompetencyWithScores {
 
 const Competencies: React.FC = () => {
   const { user } = useAuth();
+  const { useMockData, setUseFallback } = useFeatureFlags();
   const [competencies, setCompetencies] = useState<CompetencyWithScores[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,12 @@ const Competencies: React.FC = () => {
 
   const fetchCompetencies = async () => {
     if (!user) return;
+
+    if (useMockData) {
+      setCompetencies(mockCompetencies);
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -145,6 +154,8 @@ const Competencies: React.FC = () => {
 
     } catch (err) {
       console.error('Error fetching competencies:', err);
+      setUseFallback(true);
+      setCompetencies(mockCompetencies);
       setError('Erro ao carregar competências. Tente novamente.');
     } finally {
       setLoading(false);
@@ -324,15 +335,20 @@ const Competencies: React.FC = () => {
 
         {/* No Competencies Message */}
         {competencies.length === 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma Competência Encontrada</h3>
-            <p className="text-gray-600 mb-4">
-              Não foram encontradas competências para sua trilha de carreira.
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhuma competência encontrada</h3>
+            <p className="text-gray-600 mb-6">
+              Entre em contato com o RH para configurar as competências da sua trilha de carreira
             </p>
-            <p className="text-sm text-gray-500">
-              Entre em contato com o RH para configurar as competências da sua trilha.
-            </p>
+            <button 
+              onClick={() => alert('Funcionalidade de contato com RH será implementada em breve')}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            >
+              Solicitar Configuração
+            </button>
           </div>
         )}
       </div>

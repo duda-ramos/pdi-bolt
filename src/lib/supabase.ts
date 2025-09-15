@@ -1,19 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 
+// Validação básica das variáveis de ambiente
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
+console.log('🔍 Supabase Environment Check:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  urlLength: supabaseUrl?.length || 0,
+  keyLength: supabaseAnonKey?.length || 0
+})
+
+// Usar valores padrão para desenvolvimento se as variáveis não estiverem definidas
+const defaultUrl = 'https://pbjwtnhpcwkplnyzkrtu.supabase.co'
+const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiand0bmhwY3drcGxueXprcnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMDE3OTMsImV4cCI6MjA3MTg3Nzc5M30.yisHwRskz-2wpS4fbqarBxPdBSGxFxYiIfF-YOvinq0'
+
+const finalUrl = supabaseUrl || defaultUrl
+const finalKey = supabaseAnonKey || defaultKey
+
+console.log('🚀 Using Supabase URL:', finalUrl)
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(finalUrl, finalKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: false // Desabilitar para evitar problemas de roteamento
   },
   global: {
     headers: {
@@ -24,12 +37,17 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 
 // Helper function to get the current user
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) {
-    console.error('Error getting current user:', error)
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error) {
+      console.error('Error getting current user:', error)
+      return null
+    }
+    return user
+  } catch (error) {
+    console.error('Error in getCurrentUser:', error)
     return null
   }
-  return user
 }
 
 // Helper function to get user profile
@@ -135,9 +153,14 @@ export const createUserProfile = async (userId: string, email: string, profileDa
 
 // Helper function to sign out
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut()
-  if (error) {
-    console.error('Error signing out:', error)
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+      throw error
+    }
+  } catch (error) {
+    console.error('Error in signOut:', error)
     throw error
   }
 }

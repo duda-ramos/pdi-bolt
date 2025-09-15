@@ -17,6 +17,8 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
+  console.log('🎯 App render state:', { hasUser: !!user, loading, currentPage });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -29,8 +31,11 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
+    console.log('👤 No user found, showing login form');
     return <LoginForm />;
   }
+
+  console.log('✅ User authenticated, showing main app');
 
   const renderPage = () => {
     switch (currentPage) {
@@ -68,6 +73,8 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  console.log('🚀 App component mounting');
+  
   return (
     <ErrorBoundary>
       <AuthProvider>

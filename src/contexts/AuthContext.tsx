@@ -1,5 +1,4 @@
-@@ .. @@
-   const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
      try {
        console.log('🔐 AuthProvider: Starting login for:', email);
        console.log('🔐 AuthProvider: Attempting login for:', email);

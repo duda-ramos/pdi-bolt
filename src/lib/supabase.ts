@@ -1,51 +1,92 @@
-import { createClient } from '@supabase/supabase-js'
+/**
+ * Supabase Client Singleton
+ * 
+ * Este arquivo garante que apenas uma instância do cliente Supabase seja criada
+ * para evitar problemas de múltiplas instâncias e conflitos de estado.
+ */
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 
-// Validação básica das variáveis de ambiente
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Singleton instance
+let supabaseInstance: SupabaseClient<Database> | null = null
 
-console.log('🔍 Supabase Environment Check:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  urlLength: supabaseUrl?.length || 0,
-  keyLength: supabaseAnonKey?.length || 0
-})
+// Validação e configuração das variáveis de ambiente
+const getSupabaseConfig = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Usar valores padrão para desenvolvimento se as variáveis não estiverem definidas
-const defaultUrl = 'https://pbjwtnhpcwkplnyzkrtu.supabase.co'
-const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiand0bmhwY3drcGxueXprcnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMDE3OTMsImV4cCI6MjA3MTg3Nzc5M30.yisHwRskz-2wpS4fbqarBxPdBSGxFxYiIfF-YOvinq0'
+  console.log('🔍 Supabase Environment Check:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+    urlLength: supabaseUrl?.length || 0,
+    keyLength: supabaseAnonKey?.length || 0
+  })
 
-const finalUrl = supabaseUrl || defaultUrl
-const finalKey = supabaseAnonKey || defaultKey
+  // Usar valores padrão para desenvolvimento se as variáveis não estiverem definidas
+  const defaultUrl = 'https://pbjwtnhpcwkplnyzkrtu.supabase.co'
+  const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiand0bmhwY3drcGxueXprcnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMDE3OTMsImV4cCI6MjA3MTg3Nzc5M30.yisHwRskz-2wpS4fbqarBxPdBSGxFxYiIfF-YOvinq0'
 
-console.log('🚀 Using Supabase URL:', finalUrl)
+  const finalUrl = supabaseUrl || defaultUrl
+  const finalKey = supabaseAnonKey || defaultKey
 
-// Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(finalUrl, finalKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false // Desabilitar para evitar problemas de roteamento
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'dea-pdi-app'
+  console.log('🚀 Using Supabase URL:', finalUrl)
+
+  return { url: finalUrl, key: finalKey }
+}
+
+// Função para obter a instância singleton do cliente Supabase
+export const getSupabaseClient = (): SupabaseClient<Database> => {
+  if (!supabaseInstance) {
+    console.log('🔧 Creating new Supabase client instance...')
+    
+    const { url, key } = getSupabaseConfig()
+    
+    try {
+      supabaseInstance = createClient<Database>(url, key, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false // Desabilitar para evitar problemas de roteamento
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'dea-pdi-app'
+          }
+        }
+      })
+      
+      console.log('✅ Supabase client created successfully')
+    } catch (error) {
+      console.error('❌ Error creating Supabase client:', error)
+      throw error
     }
+  } else {
+    console.log('♻️ Reusing existing Supabase client instance')
   }
-})
+  
+  return supabaseInstance
+}
+
+// Export da instância para compatibilidade com código existente
+export const supabase = getSupabaseClient()
 
 // Helper function to get the current user
 export const getCurrentUser = async () => {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    console.log('👤 Getting current user...')
+    const client = getSupabaseClient()
+    const { data: { user }, error } = await client.auth.getUser()
+    
     if (error) {
-      console.error('Error getting current user:', error)
+      console.error('❌ Error getting current user:', error)
       return null
     }
+    
+    console.log('✅ Current user retrieved:', user ? `${user.email} (${user.id})` : 'No user')
     return user
   } catch (error) {
-    console.error('Error in getCurrentUser:', error)
+    console.error('❌ Error in getCurrentUser:', error)
     return null
   }
 }
@@ -53,7 +94,10 @@ export const getCurrentUser = async () => {
 // Helper function to get user profile
 export const getUserProfile = async (userId: string) => {
   try {
-    const { data, error } = await supabase
+    console.log('📋 Getting user profile for:', userId)
+    const client = getSupabaseClient()
+    
+    const { data, error } = await client
       .from('profiles')
       .select(`
         id,
@@ -77,13 +121,14 @@ export const getUserProfile = async (userId: string) => {
       .maybeSingle()
   
     if (error) {
-      console.error('Error getting user profile:', error)
+      console.error('❌ Error getting user profile:', error)
       return null
     }
   
+    console.log('✅ User profile retrieved:', data ? `${data.nome} (${data.role})` : 'No profile')
     return data
   } catch (error) {
-    console.error('Error in getUserProfile:', error)
+    console.error('❌ Error in getUserProfile:', error)
     return null
   }
 }
@@ -94,8 +139,11 @@ export const createUserProfile = async (userId: string, email: string, profileDa
   role: 'admin' | 'gestor' | 'colaborador' | 'rh';
 }) => {
   try {
+    console.log('🆕 Creating user profile for:', userId, profileData)
+    const client = getSupabaseClient()
+    
     // First check if profile already exists
-    const { data: existingProfile, error: checkError } = await supabase
+    const { data: existingProfile, error: checkError } = await client
       .from('profiles')
       .select('id, user_id, nome, email, role')
       .eq('user_id', userId)
@@ -103,12 +151,12 @@ export const createUserProfile = async (userId: string, email: string, profileDa
     
     // If profile exists, return it
     if (existingProfile && !checkError) {
-      console.log('Profile already exists, returning existing profile')
+      console.log('✅ Profile already exists, returning existing profile')
       return existingProfile
     }
     
     // Create new profile
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('profiles')
       .insert({
         user_id: userId,
@@ -124,29 +172,29 @@ export const createUserProfile = async (userId: string, email: string, profileDa
     if (error) {
       // Handle unique constraint violation (profile already exists)
       if (error.code === '23505') {
-        console.log('Profile already exists (unique constraint), fetching existing profile')
-        const { data: existingData, error: fetchError } = await supabase
+        console.log('✅ Profile already exists (unique constraint), fetching existing profile')
+        const { data: existingData, error: fetchError } = await client
           .from('profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
         
         if (fetchError) {
-          console.error('Error fetching existing profile:', fetchError)
+          console.error('❌ Error fetching existing profile:', fetchError)
           throw fetchError
         }
         
         return existingData
       }
       
-      console.error('Error creating user profile:', error)
+      console.error('❌ Error creating user profile:', error)
       throw error
     }
     
-    console.log('Profile created successfully:', data)
+    console.log('✅ Profile created successfully:', data)
     return data
   } catch (error) {
-    console.error('Error in createUserProfile:', error)
+    console.error('❌ Error in createUserProfile:', error)
     throw error
   }
 }
@@ -154,13 +202,24 @@ export const createUserProfile = async (userId: string, email: string, profileDa
 // Helper function to sign out
 export const signOut = async () => {
   try {
-    const { error } = await supabase.auth.signOut()
+    console.log('🚪 Signing out...')
+    const client = getSupabaseClient()
+    const { error } = await client.auth.signOut()
+    
     if (error) {
-      console.error('Error signing out:', error)
+      console.error('❌ Error signing out:', error)
       throw error
     }
+    
+    console.log('✅ Sign out successful')
   } catch (error) {
-    console.error('Error in signOut:', error)
+    console.error('❌ Error in signOut:', error)
     throw error
   }
+}
+
+// Reset singleton (útil para testes ou reinicializações)
+export const resetSupabaseClient = () => {
+  console.log('🔄 Resetting Supabase client instance')
+  supabaseInstance = null
 }

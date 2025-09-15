@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase';
+import { getSupabaseClient, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/auth';
 
@@ -9,32 +9,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  console.log('🏗️ AuthProvider: Component mounting/re-mounting');
+
   useEffect(() => {
     let mounted = true;
+    console.log('🔄 AuthProvider: useEffect triggered, mounted:', mounted);
 
     const getInitialSession = async () => {
       try {
-        console.log('🔍 Getting initial session...');
+        console.log('🔍 AuthProvider: Getting initial session...');
+        const supabase = getSupabaseClient();
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('❌ AuthProvider: Error getting session:', error);
           if (mounted) {
+            console.log('🔄 AuthProvider: Setting loading to false (error case)');
             setLoading(false);
           }
           return;
         }
 
+        console.log('📋 AuthProvider: Session data:', session ? `User: ${session.user.email}` : 'No session');
+
         if (session?.user && mounted) {
-          console.log('📝 Session found, loading profile...');
+          console.log('📝 AuthProvider: Session found, loading profile...');
           await loadUserProfile(session.user);
         } else {
-          console.log('❌ No session found');
+          console.log('❌ AuthProvider: No session found');
+          if (mounted) {
+            console.log('🔄 AuthProvider: Setting loading to false (no session)');
+            setLoading(false);
+          }
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error);
-      } finally {
+        console.error('❌ AuthProvider: Error in getInitialSession:', error);
         if (mounted) {
+          console.log('🔄 AuthProvider: Setting loading to false (catch block)');
           setLoading(false);
         }
       }
@@ -43,21 +54,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getInitialSession();
 
     // Listen for auth changes
+    console.log('👂 AuthProvider: Setting up auth state change listener');
+    const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Auth state changed:', event);
+        console.log('🔄 AuthProvider: Auth state changed:', event, session ? `User: ${session.user.email}` : 'No session');
         
-        if (!mounted) return;
+        if (!mounted) {
+          console.log('⚠️ AuthProvider: Component unmounted, ignoring auth state change');
+          return;
+        }
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserProfile(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('✅ AuthProvider: User signed in, loading profile');
+            await loadUserProfile(session.user);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('🚪 AuthProvider: User signed out, clearing user state');
+            setUser(null);
+            setLoading(false);
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            console.log('🔄 AuthProvider: Token refreshed, updating profile if needed');
+            // Optionally reload profile on token refresh
+          }
+        } catch (error) {
+          console.error('❌ AuthProvider: Error handling auth state change:', error);
+          setLoading(false);
         }
       }
     );
 
     return () => {
+      console.log('🧹 AuthProvider: Cleanup - unmounting, unsubscribing from auth changes');
       mounted = false;
       subscription.unsubscribe();
     };
@@ -75,7 +103,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
-      console.log('👤 Loading profile for user:', supabaseUser.id);
+      console.log('👤 AuthProvider: Loading profile for user:', supabaseUser.id, supabaseUser.email);
       const profile = await getUserProfile(supabaseUser.id);
       
       if (profile) {
@@ -98,44 +126,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           updated_at: profile.updated_at
         };
         
-        console.log('✅ Profile loaded successfully:', user.nome);
+        console.log('✅ AuthProvider: Profile loaded successfully:', user.nome, user.role);
         setUser(user);
+        setLoading(false);
       } else {
-        console.error('❌ Profile not found for user:', supabaseUser.id);
+        console.error('❌ AuthProvider: Profile not found for user:', supabaseUser.id);
         setUser(null);
+        setLoading(false);
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('❌ AuthProvider: Error loading user profile:', error);
       setUser(null);
+      setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔐 Attempting login for:', email);
+      console.log('🔐 AuthProvider: Attempting login for:', email);
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
-        console.error('Login error:', error);
+        console.error('❌ AuthProvider: Login error:', error);
         throw error;
       }
 
       if (data.user) {
-        console.log('✅ Login successful');
-        await loadUserProfile(data.user);
+        console.log('✅ AuthProvider: Login successful for:', data.user.email);
+        // Profile will be loaded by the auth state change listener
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('❌ AuthProvider: Login error:', error);
       throw new Error(error.message || 'Erro ao fazer login');
     }
   };
 
   const signup = async (email: string, password: string, nome: string, role: 'admin' | 'gestor' | 'colaborador' | 'rh' = 'colaborador') => {
     try {
-      console.log('📝 Attempting signup for:', email);
+      console.log('📝 AuthProvider: Attempting signup for:', email, 'Role:', role);
+      const supabase = getSupabaseClient();
       
       // 1. Criar usuário no Supabase Auth  
       const { data, error } = await supabase.auth.signUp({
@@ -150,29 +183,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        console.error('Signup error:', error);
+        console.error('❌ AuthProvider: Signup error:', error);
         throw error;
       }
+
+      console.log('📋 AuthProvider: Signup data:', data.user ? `User created: ${data.user.email}` : 'No user data');
 
       // 2. Criar perfil na tabela profiles se o usuário foi criado
       if (data.user) {
         try {
+          console.log('🆕 AuthProvider: Creating user profile...');
           await createUserProfile(data.user.id, email, {
             nome,
             role
           });
           
-          console.log('✅ Profile created successfully for user:', data.user.id);
+          console.log('✅ AuthProvider: Profile created successfully for user:', data.user.id);
         } catch (profileError) {
-          console.error('Error creating user profile:', profileError);
+          console.error('❌ AuthProvider: Error creating user profile:', profileError);
           // If profile creation fails, still allow signup to complete
-          console.log('Profile creation failed, but user account was created.');
+          console.log('⚠️ AuthProvider: Profile creation failed, but user account was created.');
         }
       }
 
       // 3. Verificar se precisa de confirmação de email
       if (data.user && !data.session) {
-        // User created but needs email confirmation - this is normal
+        console.log('📧 AuthProvider: User created but needs email confirmation');
         return { 
           success: true, 
           message: 'Conta criada com sucesso! Verifique seu email (incluindo spam) para confirmar a conta. Após clicar no link de confirmação, você poderá fazer login.',
@@ -182,21 +218,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 4. Se temos uma sessão, carregar o perfil
       if (data.session && data.user) {
-        // Automatic login - load profile
-        try {
-          await loadUserProfile(data.user);
-          return { success: true, message: 'Conta criada e login realizado com sucesso!' };
-        } catch (loadError) {
-          console.error('Error loading profile after signup:', loadError);
-          return { 
-            success: true, 
-            message: 'Conta criada com sucesso! Faça login para acessar sua conta.',
-            needsConfirmation: false 
-          };
-        }
+        console.log('✅ AuthProvider: Automatic login after signup');
+        // Profile will be loaded by the auth state change listener
+        return { success: true, message: 'Conta criada e login realizado com sucesso!' };
       }
 
       // Unexpected case
+      console.log('⚠️ AuthProvider: Unexpected signup result');
       return { 
         success: true, 
         message: 'Conta criada com sucesso! Faça login para continuar.',
@@ -204,7 +232,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
     } catch (error: any) {
-      console.error('Signup error:', error);
+      console.error('❌ AuthProvider: Signup error:', error);
       
       // Provide more specific error messages
       if (error.message?.includes('User already registered')) {
@@ -221,23 +249,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      console.log('🚪 Logging out...');
-      const { error } = await supabaseSignOut();
-      if (error) throw error;
+      console.log('🚪 AuthProvider: Logging out...');
+      await supabaseSignOut();
       setUser(null);
-      console.log('✅ Logout successful');
+      setLoading(false);
+      console.log('✅ AuthProvider: Logout successful');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ AuthProvider: Logout error:', error);
       // Still clear user state even if logout fails
       setUser(null);
+      setLoading(false);
     }
   };
 
   // Função para atualizar perfil do usuário
   const updateProfile = async (updates: Partial<User>) => {
-    if (!user) throw new Error('Usuário não autenticado');
+    if (!user) {
+      console.error('❌ AuthProvider: Cannot update profile - no user authenticated');
+      throw new Error('Usuário não autenticado');
+    }
 
     try {
+      console.log('📝 AuthProvider: Updating profile for user:', user.id, updates);
+      const supabase = getSupabaseClient();
+      
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -251,17 +286,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ AuthProvider: Error updating profile:', error);
+        throw error;
+      }
 
+      console.log('✅ AuthProvider: Profile updated successfully');
       // Atualizar estado local
       setUser(prev => prev ? { ...prev, ...updates, updated_at: data.updated_at } : null);
       
       return data;
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('❌ AuthProvider: Error updating profile:', error);
       throw error;
     }
   };
+
+  console.log('🎯 AuthProvider: Rendering with state:', { 
+    hasUser: !!user, 
+    loading, 
+    userName: user?.nome,
+    userRole: user?.role 
+  });
 
   return (
     <AuthContext.Provider value={{ user, login, signup, logout, loading, updateProfile }}>

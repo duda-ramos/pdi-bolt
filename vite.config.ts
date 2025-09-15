@@ -7,4 +7,18 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
+    // Evitar problemas de navegação com URLs inválidas
+    hmr: {
+      port: 5173,
+    }
+  },
+  preview: {
+    host: true,
+    port: 4173,
+    strictPort: true,
+  }
 });

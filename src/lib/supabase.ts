@@ -179,12 +179,21 @@ export const createUserProfile = async (userId: string, email: string, profileDa
           .eq('user_id', userId)
           .single()
         
-        if (fetchError) {
+        detectSessionInUrl: false, // Desabilitar para evitar problemas de roteamento
+        flowType: 'pkce'
           console.error('❌ Error fetching existing profile:', fetchError)
           throw fetchError
         }
         
         return existingData
+      },
+      // Garantir URLs válidas para redirecionamento
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+        flowType: 'pkce',
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
       }
       
       console.error('❌ Error creating user profile:', error)

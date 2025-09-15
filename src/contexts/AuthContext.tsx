@@ -16,6 +16,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
     console.log('🔄 AuthProvider: useEffect triggered, mounted:', mounted);
 
     const getInitialSession = async () => {
@@ -63,6 +64,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
+    // Timeout de segurança para evitar loading infinito
+    timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('⚠️ AuthProvider: Loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 10000); // 10 segundos timeout
     console.log('🚀 AuthProvider: Calling getInitialSession');
     getInitialSession();
 
@@ -81,6 +89,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return;
         }
 
+        // Limpar timeout quando há mudança de estado
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         try {
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('✅ AuthProvider: User signed in, loading profile for:', session.user.id);
@@ -108,6 +120,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('🧹 AuthProvider: Cleanup - unmounting, unsubscribing from auth changes');
       console.log('🧹 AuthProvider: Cleanup - unmounting, unsubscribing from auth changes');
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       subscription.unsubscribe();
     };
   }, []);
@@ -127,7 +142,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('👤 AuthProvider: Starting loadUserProfile for:', supabaseUser.id, supabaseUser.email);
       console.log('👤 AuthProvider: Loading profile for user:', supabaseUser.id, supabaseUser.email);
-      const profile = await getUserProfile(supabaseUser.id);
+      
+      // Timeout para evitar travamento na busca do perfil
+      const profilePromise = getUserProfile(supabaseUser.id);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile loading timeout')), 5000)
+      );
+      
+      const profile = await Promise.race([profilePromise, timeoutPromise]);
       
       if (profile) {
         console.log('📋 AuthProvider: Profile data received:', profile.nome, profile.role);

@@ -43,13 +43,21 @@ const LoginForm: React.FC = () => {
           setMessage(result?.message || 'Conta criada com sucesso!');
         }
       } else {
-        await login(email, password);
+        // Timeout para login para evitar travamento
+        const loginPromise = login(email, password);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Login timeout - tente novamente')), 10000)
+        );
+        
+        await Promise.race([loginPromise, timeoutPromise]);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       
       if (errorMessage.includes('Invalid login credentials')) {
         setError('Credenciais inválidas. Verifique seu email e senha.');
+      } else if (errorMessage.includes('timeout')) {
+        setError('Tempo limite excedido. Verifique sua conexão e tente novamente.');
       } else if (errorMessage.includes('User already registered')) {
         setError('Este email já está cadastrado. Tente fazer login.');
       } else if (errorMessage.includes('Email not confirmed')) {

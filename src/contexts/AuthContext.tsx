@@ -14,20 +14,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   console.log('🏗️ AuthProvider: Component mounting/re-mounting');
 
-  // DIAGNÓSTICO TEMPORÁRIO: Forçar loading para false após 5 segundos
-  useEffect(() => {
-    console.log('⏰ AuthProvider: Setting up diagnostic timeout');
-    const diagnosticTimeout = setTimeout(() => {
-      console.log('🚨 DIAGNÓSTICO: Forçando loading para false após 5 segundos');
-      setLoading(false);
-    }, 5000);
-
-    return () => {
-      console.log('⏰ AuthProvider: Clearing diagnostic timeout');
-      clearTimeout(diagnosticTimeout);
-    };
-  }, []);
-
   useEffect(() => {
     let mounted = true;
     console.log('🔄 AuthProvider: useEffect triggered, mounted:', mounted);

@@ -15,12 +15,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const getInitialSession = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          logError(error, 'SESSION_ERROR');
           setLoading(false);
           return;
         }
@@ -30,7 +28,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
-        logError(error as Error, 'INIT_SESSION_ERROR');
       } finally {
         setLoading(false);
       }
@@ -68,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
+      setLoading(true);
       const profile = await getUserProfile(supabaseUser.id);
       
       if (profile) {
@@ -98,12 +96,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Error loading user profile:', error);
       setUser(null);
+    } finally {
+      setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
-    setLoading(true);
+    if (loading) return; // Prevent multiple simultaneous login attempts
     
+    setLoading(true);
     try {
       const { data, error } = await measureAsync('auth_login', () =>
         supabase.auth.signInWithPassword({
@@ -122,7 +123,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      logError(error, 'LOGIN_FAILED');
       throw new Error(error.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);

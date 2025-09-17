@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { getSupabaseClient, getCurrentUser, getUserProfile, signOut as supabaseSignOut, createUserProfile } from '../lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/auth';
+import { captureError, setSentryUser, clearSentryUser } from '../lib/sentry';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -68,9 +69,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     timeoutId = setTimeout(() => {
       if (mounted && loading) {
         console.warn('⚠️ AuthProvider: Loading timeout reached, forcing loading to false');
+        captureError(new Error('Auth loading timeout - forced to false'), {
+          context: 'AuthProvider',
+          mounted,
+          hasUser: !!user
+        });
         setLoading(false);
       }
-    }, 10000); // 10 segundos timeout
+    }, 8000); // Reduzido para 8 segundos
     console.log('🚀 AuthProvider: Calling getInitialSession');
     getInitialSession();
 
@@ -143,10 +149,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('👤 AuthProvider: Starting loadUserProfile for:', supabaseUser.id, supabaseUser.email);
       console.log('👤 AuthProvider: Loading profile for user:', supabaseUser.id, supabaseUser.email);
       
-      // Timeout para evitar travamento na busca do perfil
+      // Timeout reduzido para evitar travamento na busca do perfil
       const profilePromise = getUserProfile(supabaseUser.id);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile loading timeout')), 15000)
+        setTimeout(() => reject(new Error('Profile loading timeout')), 5000)
       );
       
       const profile = await Promise.race([profilePromise, timeoutPromise]);
@@ -175,16 +181,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('✅ AuthProvider: Profile loaded successfully, setting user and loading=false');
         console.log('✅ AuthProvider: Profile loaded successfully:', user.nome, user.role);
         setUser(user);
+        
+        // Configurar usuário no Sentry para contexto de erros
+        setSentryUser({
+          id: user.id,
+          email: user.email,
+          nome: user.nome,
+          role: user.role
+        });
+        
         setLoading(false);
       } else {
         console.error('❌ AuthProvider: Profile not found for user:', supabaseUser.id);
         console.error('❌ AuthProvider: Profile not found for user:', supabaseUser.id);
+        captureError(new Error('Profile not found after successful authentication'), {
+          userId: supabaseUser.id,
+          userEmail: supabaseUser.email
+        });
         setUser(null);
         setLoading(false);
       }
     } catch (error) {
       console.error('❌ AuthProvider: Exception in loadUserProfile:', error);
       console.error('❌ AuthProvider: Error loading user profile:', error);
+      captureError(error as Error, {
+        context: 'loadUserProfile',
+        userId: supabaseUser.id,
+        userEmail: supabaseUser.email
+      });
       setUser(null);
       setLoading(false);
     }
@@ -315,6 +339,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('🚪 AuthProvider: Starting logout');
       console.log('🚪 AuthProvider: Logging out...');
+      
+      // Limpar usuário do Sentry antes do logout
+      clearSentryUser();
+      
       await supabaseSignOut();
       setUser(null);
       setLoading(false);
@@ -323,6 +351,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('❌ AuthProvider: Exception in logout:', error);
       console.error('❌ AuthProvider: Logout error:', error);
+      captureError(error as Error, {
+        context: 'logout'
+      });
       // Still clear user state even if logout fails
       setUser(null);
       setLoading(false);

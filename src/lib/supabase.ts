@@ -7,6 +7,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
+import { captureError } from './sentry'
 
 // Singleton instance
 let supabaseInstance: SupabaseClient<Database> | null = null
@@ -82,6 +83,10 @@ export const getCurrentUser = async () => {
     
     if (error) {
       console.error('❌ Error getting current user:', error)
+      captureError(new Error(`Failed to get current user: ${error.message}`), {
+        context: 'getCurrentUser',
+        supabaseError: error
+      });
       return null
     }
     
@@ -124,6 +129,11 @@ export const getUserProfile = async (userId: string) => {
   
     if (error) {
       console.error('❌ Error getting user profile:', error)
+      captureError(new Error(`Failed to get user profile: ${error.message}`), {
+        context: 'getUserProfile',
+        userId,
+        supabaseError: error
+      });
       return null
     }
   

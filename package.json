@@ -10,9 +10,12 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "sentry:test": "node -e \"console.log('Testing Sentry integration...'); throw new Error('Sentry test error');\""
   },
   "dependencies": {
+    "@sentry/react": "^10.12.0",
+    "@sentry/tracing": "^7.120.4",
     "@supabase/supabase-js": "^2.57.2",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { captureError, captureMessage } from '../lib/sentry'
 
 export interface ErrorInfo {
   message: string
@@ -24,6 +25,13 @@ export const useErrorHandler = () => {
       if (typeof error === 'object' && error.stack) {
         console.error('Stack trace:', error.stack)
       }
+    }
+
+    // Capturar no Sentry
+    if (typeof error === 'string') {
+      captureMessage(error, 'error', { code, details });
+    } else {
+      captureError(error, { code, details });
     }
 
     // Add to error list
@@ -55,6 +63,7 @@ export const useErrorHandler = () => {
 export const setupGlobalErrorHandler = (logError: (error: Error | string, code?: string, details?: any) => void) => {
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled Promise Rejection:', event.reason);
     logError(event.reason, 'UNHANDLED_PROMISE_REJECTION', {
       promise: event.promise
     })
@@ -62,6 +71,7 @@ export const setupGlobalErrorHandler = (logError: (error: Error | string, code?:
 
   // Handle JavaScript errors
   window.addEventListener('error', (event) => {
+    console.error('🚨 JavaScript Error:', event.error || event.message);
     logError(event.error || event.message, 'JAVASCRIPT_ERROR', {
       filename: event.filename,
       lineno: event.lineno,

@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { captureError } from '../../lib/sentry'
 
 interface Props {
   children: ReactNode
@@ -28,6 +29,13 @@ class ErrorBoundary extends Component<Props, State> {
     
     // Log error
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    
+    // Capturar erro no Sentry
+    captureError(error, {
+      errorInfo,
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true
+    });
     
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo)

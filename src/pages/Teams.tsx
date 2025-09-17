@@ -44,6 +44,7 @@ const Teams: React.FC = () => {
     try {
       setError(null);
       
+      // Single query with joins to get teams, leaders, and member counts
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select(`
@@ -51,34 +52,33 @@ const Teams: React.FC = () => {
           nome,
           descricao,
           created_by,
-          created_at
+          created_at,
+          profiles!teams_created_by_fkey(nome)
         `)
         .order('created_at', { ascending: false });
 
       if (teamsError) throw teamsError;
 
-      // Buscar nomes dos líderes
-      const teamsWithLeaders = await Promise.all(
-        (teamsData || []).map(async (team) => {
-          const { data: leaderData } = await supabase
-            .from('profiles')
-            .select('nome')
-            .eq('user_id', team.created_by)
-            .single();
+      // Get member counts for all teams in a single query
+      const teamIds = (teamsData || []).map(team => team.id);
+      const { data: memberCounts } = await supabase
+        .from('profiles')
+        .select('time_id')
+        .in('time_id', teamIds)
+        .not('time_id', 'is', null);
 
-          // Contar membros da equipe
-          const { count } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('time_id', team.id);
+      // Count members by team
+      const memberCountsByTeam = (memberCounts || []).reduce((acc, member) => {
+        acc[member.time_id] = (acc[member.time_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
-          return {
-            ...team,
-            leader_name: leaderData?.nome || 'Não informado',
-            member_count: count || 0
-          };
-        })
-      );
+      // Process teams with leader names and member counts
+      const teamsWithLeaders = (teamsData || []).map(team => ({
+        ...team,
+        leader_name: team.profiles?.nome || 'Não informado',
+        member_count: memberCountsByTeam[team.id] || 0
+      }));
 
       setTeams(teamsWithLeaders);
     } catch (err) {
@@ -89,6 +89,7 @@ const Teams: React.FC = () => {
 
   const fetchTeamMembers = async () => {
     try {
+      // Single query with join to get members and their team names
       const { data: membersData, error: membersError } = await supabase
         .from('profiles')
         .select(`
@@ -97,30 +98,18 @@ const Teams: React.FC = () => {
           nome,
           email,
           role,
-          time_id
+          time_id,
+          teams!profiles_time_id_fkey(nome)
         `)
         .not('time_id', 'is', null);
 
       if (membersError) throw membersError;
 
-      // Buscar nomes das equipes
-      const membersWithTeams = await Promise.all(
-        (membersData || []).map(async (member) => {
-          if (member.time_id) {
-            const { data: teamData } = await supabase
-              .from('teams')
-              .select('nome')
-              .eq('id', member.time_id)
-              .single();
-
-            return {
-              ...member,
-              team_name: teamData?.nome || 'Equipe não encontrada'
-            };
-          }
-          return member;
-        })
-      );
+      // Process members with team names from the join
+      const membersWithTeams = (membersData || []).map(member => ({
+        ...member,
+        team_name: member.teams?.nome || 'Equipe não encontrada'
+      }));
 
       setTeamMembers(membersWithTeams);
     } catch (err) {

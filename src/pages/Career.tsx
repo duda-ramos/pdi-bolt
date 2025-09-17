@@ -94,30 +94,32 @@ const Career: React.FC = () => {
       if (trackError) throw trackError;
       setCareerTrack(trackData);
 
-      // 3. Buscar estágios da trilha
+      // 3. Single query to get stages with their competencies
       const { data: stagesData, error: stagesError } = await supabase
         .from('career_stages')
-        .select('*')
+        .select(`
+          *,
+          competencies(*)
+        `)
         .eq('trilha_id', userTrackId)
         .order('ordem', { ascending: true });
 
       if (stagesError) throw stagesError;
       setStages(stagesData || []);
 
-      // 4. Buscar competências de todos os estágios
+      // 4. Extract all competencies from stages
+      const allCompetencies: Competency[] = [];
       if (stagesData && stagesData.length > 0) {
-        const stageIds = stagesData.map(stage => stage.id);
-        const { data: competenciesData, error: competenciesError } = await supabase
-          .from('competencies')
-          .select('*')
-          .in('stage_id', stageIds);
+        stagesData.forEach(stage => {
+          if (stage.competencies) {
+            allCompetencies.push(...stage.competencies);
+          }
+        });
+        setCompetencies(allCompetencies);
 
-        if (competenciesError) throw competenciesError;
-        setCompetencies(competenciesData || []);
-
-        // 5. Buscar pontuações do usuário
-        if (competenciesData && competenciesData.length > 0) {
-          const competencyIds = competenciesData.map(comp => comp.id);
+        // 5. Single query to get all user scores
+        if (allCompetencies.length > 0) {
+          const competencyIds = allCompetencies.map(comp => comp.id);
           const { data: scoresData, error: scoresError } = await supabase
             .from('assessments')
             .select('competency_id, nota, tipo')
@@ -127,8 +129,7 @@ const Career: React.FC = () => {
           if (scoresError) {
             console.warn('Erro ao buscar pontuações:', scoresError);
           } else {
-            // Processar pontuações (self vs manager)
-            const processedScores: UserCompetencyScore[] = [];
+            // Process scores efficiently
             const scoresByCompetency = (scoresData || []).reduce((acc, score) => {
               if (!acc[score.competency_id]) {
                 acc[score.competency_id] = { self: 0, manager: 0 };
@@ -141,6 +142,7 @@ const Career: React.FC = () => {
               return acc;
             }, {} as Record<string, { self: number; manager: number }>);
 
+            const processedScores: UserCompetencyScore[] = [];
             Object.entries(scoresByCompetency).forEach(([competencyId, scores]) => {
               processedScores.push({
                 competency_id: competencyId,

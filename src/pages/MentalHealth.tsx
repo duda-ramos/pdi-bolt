@@ -40,40 +40,33 @@ const MentalHealth: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch HR records for overview
+      // Single query with join to get HR records and user names
       const { data: records, error: recordsError } = await supabase
         .from('hr_records')
-        .select('*')
+        .select(`
+          *,
+          profiles!hr_records_user_id_fkey(nome)
+        `)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (recordsError) throw recordsError;
 
-      // Enrich records with user names (keeping confidentiality for non-HR users)
-      const enrichedRecords = await Promise.all(
-        (records || []).map(async (record) => {
-          let displayName = 'Paciente Confidencial';
-          
-          // Only show real names for HR users or if it's the user's own record
-          if (user.role === 'rh' || record.user_id === user.id) {
-            const { data: userData } = await supabase
-              .from('profiles')
-              .select('nome')
-              .eq('user_id', record.user_id)
-              .single();
-            
-            if (userData) {
-              displayName = userData.nome;
-            }
-          }
+      // Process records with confidentiality rules
+      const enrichedRecords = (records || []).map(record => {
+        let displayName = 'Paciente Confidencial';
+        
+        // Only show real names for HR users or if it's the user's own record
+        if (user.role === 'rh' || record.user_id === user.id) {
+          displayName = record.profiles?.nome || 'Nome não encontrado';
+        }
 
-          return {
-            ...record,
-            display_name: displayName,
-            confidential: user.role !== 'rh' && record.user_id !== user.id
-          };
-        })
-      );
+        return {
+          ...record,
+          display_name: displayName,
+          confidential: user.role !== 'rh' && record.user_id !== user.id
+        };
+      });
 
       setRecentConsultations(enrichedRecords);
 

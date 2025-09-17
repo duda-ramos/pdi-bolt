@@ -79,26 +79,16 @@ const Competencies: React.FC = () => {
         return;
       }
 
-      // 2. Buscar estágios da trilha
-      const { data: stages, error: stagesError } = await supabase
-        .from('career_stages')
-        .select('id')
-        .eq('trilha_id', userTrackId);
-
-      if (stagesError) throw stagesError;
-
-      if (!stages || stages.length === 0) {
-        setError('Nenhum estágio encontrado para sua trilha de carreira.');
-        return;
-      }
-
-      const stageIds = stages.map(stage => stage.id);
-
-      // 3. Buscar competências dos estágios
+      // 2. Single query to get competencies with stage information
       const { data: competenciesData, error: competenciesError } = await supabase
         .from('competencies')
-        .select('*')
-        .in('stage_id', stageIds);
+        .select(`
+          *,
+          career_stages!competencies_stage_id_fkey(
+            trilha_id
+          )
+        `)
+        .eq('career_stages.trilha_id', userTrackId);
 
       if (competenciesError) throw competenciesError;
 
@@ -107,7 +97,7 @@ const Competencies: React.FC = () => {
         return;
       }
 
-      // 4. Buscar avaliações do usuário
+      // 3. Single query to get all user assessments for these competencies
       const competencyIds = competenciesData.map(comp => comp.id);
       const { data: assessments, error: assessmentsError } = await supabase
         .from('assessments')
@@ -119,12 +109,19 @@ const Competencies: React.FC = () => {
         console.warn('Erro ao buscar avaliações:', assessmentsError);
       }
 
-      // 5. Processar dados
+      // 4. Process data efficiently with lookups
+      const assessmentsByCompetency = (assessments || []).reduce((acc, assessment) => {
+        if (!acc[assessment.competency_id]) {
+          acc[assessment.competency_id] = {};
+        }
+        acc[assessment.competency_id][assessment.tipo] = assessment;
+        return acc;
+      }, {} as Record<string, Record<string, any>>);
+
       const processedCompetencies: CompetencyWithScores[] = competenciesData.map(comp => {
-        const compAssessments = (assessments || []).filter(a => a.competency_id === comp.id);
-        
-        const selfAssessment = compAssessments.find(a => a.tipo === 'self');
-        const managerAssessment = compAssessments.find(a => a.tipo === 'manager');
+        const compAssessments = assessmentsByCompetency[comp.id] || {};
+        const selfAssessment = compAssessments.self;
+        const managerAssessment = compAssessments.manager;
         
         const selfScore = selfAssessment ? selfAssessment.nota : 0;
         const managerScore = managerAssessment ? managerAssessment.nota : 0;
@@ -137,7 +134,7 @@ const Competencies: React.FC = () => {
           managerScore,
           divergence: selfScore - managerScore,
           description: comp.descricao,
-          hasAssessments: compAssessments.length > 0
+          hasAssessments: Object.keys(compAssessments).length > 0
         };
       });
 

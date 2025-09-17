@@ -47,9 +47,13 @@ const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
       setLoading(true);
       setError(null);
 
+      // Single query with join to get appointments and user names
       let query = supabase
         .from('hr_records')
-        .select('*')
+        .select(`
+          *,
+          profiles!hr_records_user_id_fkey(nome)
+        `)
         .eq('tipo', 'sessao')
         .order('data_sessao', { ascending: true, nullsFirst: false });
 
@@ -62,31 +66,21 @@ const HRAppointments: React.FC<HRAppointmentsProps> = ({ onRefresh }) => {
 
       if (fetchError) throw fetchError;
 
-      // Enrich with user names
-      const enrichedAppointments = await Promise.all(
-        (data || []).map(async (appointment) => {
-          let displayName = 'Paciente Confidencial';
-          
-          // Show real names for HR users or if it's the user's own appointment
-          if (user.role === 'rh' || appointment.user_id === user.id) {
-            const { data: userData } = await supabase
-              .from('profiles')
-              .select('nome')
-              .eq('user_id', appointment.user_id)
-              .single();
-            
-            if (userData) {
-              displayName = userData.nome;
-            }
-          }
+      // Process appointments with user names
+      const enrichedAppointments = (data || []).map(appointment => {
+        let displayName = 'Paciente Confidencial';
+        
+        // Show real names for HR users or if it's the user's own appointment
+        if (user.role === 'rh' || appointment.user_id === user.id) {
+          displayName = appointment.profiles?.nome || 'Nome não encontrado';
+        }
 
-          return {
-            ...appointment,
-            display_name: displayName,
-            confidential: user.role !== 'rh' && appointment.user_id !== user.id
-          };
-        })
-      );
+        return {
+          ...appointment,
+          display_name: displayName,
+          confidential: user.role !== 'rh' && appointment.user_id !== user.id
+        };
+      });
 
       setAppointments(enrichedAppointments);
     } catch (err) {

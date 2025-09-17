@@ -37,30 +37,24 @@ const PDIComments: React.FC<PDICommentsProps> = ({ objectiveId }) => {
       setLoading(true);
       setError(null);
 
+      // Single query with join to get comments and user data
       const { data, error: fetchError } = await supabase
         .from('pdi_comments')
-        .select('*')
+        .select(`
+          *,
+          profiles!pdi_comments_user_id_fkey(nome, role)
+        `)
         .eq('objective_id', objectiveId)
         .order('created_at', { ascending: true });
 
       if (fetchError) throw fetchError;
 
-      // Enrich comments with user data
-      const enrichedComments = await Promise.all(
-        (data || []).map(async (comment) => {
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('nome, role')
-            .eq('user_id', comment.user_id)
-            .single();
-
-          return {
-            ...comment,
-            user_name: userData?.nome || 'Usuário Desconhecido',
-            user_role: userData?.role || 'colaborador'
-          };
-        })
-      );
+      // Process comments with user data from join
+      const enrichedComments = (data || []).map(comment => ({
+        ...comment,
+        user_name: comment.profiles?.nome || 'Usuário Desconhecido',
+        user_role: comment.profiles?.role || 'colaborador'
+      }));
 
       setComments(enrichedComments);
     } catch (err) {

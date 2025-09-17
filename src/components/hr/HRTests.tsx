@@ -47,9 +47,13 @@ const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
       setLoading(true);
       setError(null);
 
+      // Single query with join to get tests and user names
       let query = supabase
         .from('hr_tests')
-        .select('*')
+        .select(`
+          *,
+          profiles!hr_tests_user_id_fkey(nome)
+        `)
         .order('created_at', { ascending: false });
 
       // If not HR, only show user's own tests
@@ -61,32 +65,22 @@ const HRTests: React.FC<HRTestsProps> = ({ onRefresh }) => {
 
       if (fetchError) throw fetchError;
 
-      // Enrich with user names and status
-      const enrichedTests = await Promise.all(
-        (data || []).map(async (test) => {
-          let displayName = 'Paciente Confidencial';
-          
-          // Show real names for HR users or if it's the user's own test
-          if (user.role === 'rh' || test.user_id === user.id) {
-            const { data: userData } = await supabase
-              .from('profiles')
-              .select('nome')
-              .eq('user_id', test.user_id)
-              .single();
-            
-            if (userData) {
-              displayName = userData.nome;
-            }
-          }
+      // Process tests with user names and status
+      const enrichedTests = (data || []).map(test => {
+        let displayName = 'Paciente Confidencial';
+        
+        // Show real names for HR users or if it's the user's own test
+        if (user.role === 'rh' || test.user_id === user.id) {
+          displayName = test.profiles?.nome || 'Nome não encontrado';
+        }
 
-          return {
-            ...test,
-            display_name: displayName,
-            confidential: user.role !== 'rh' && test.user_id !== user.id,
-            status: test.realizado_em ? 'completed' as const : 'pending' as const
-          };
-        })
-      );
+        return {
+          ...test,
+          display_name: displayName,
+          confidential: user.role !== 'rh' && test.user_id !== user.id,
+          status: test.realizado_em ? 'completed' as const : 'pending' as const
+        };
+      });
 
       setTests(enrichedTests);
     } catch (err) {

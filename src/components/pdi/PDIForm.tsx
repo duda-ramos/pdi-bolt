@@ -58,24 +58,19 @@ const PDIForm: React.FC<PDIFormProps> = ({ onSubmit, onCancel }) => {
       }
 
       if (userTrackId) {
-        // Get stages for the track
-        const { data: stages } = await supabase
-          .from('career_stages')
-          .select('id')
-          .eq('trilha_id', userTrackId);
-
-        if (stages && stages.length > 0) {
-          const stageIds = stages.map(s => s.id);
-          
-          // Get competencies for these stages
-          const { data: competenciesData } = await supabase
-            .from('competencies')
-            .select('id, nome, tipo')
-            .in('stage_id', stageIds)
-            .order('nome');
-          
-          setCompetencies(competenciesData || []);
-        }
+        // Single query to get competencies for the track
+        const { data: competenciesData } = await supabase
+          .from('competencies')
+          .select(`
+            id, 
+            nome, 
+            tipo,
+            career_stages!competencies_stage_id_fkey(trilha_id)
+          `)
+          .eq('career_stages.trilha_id', userTrackId)
+          .order('nome');
+        
+        setCompetencies(competenciesData || []);
       }
 
       // Get potential mentors (users with gestor or admin role)

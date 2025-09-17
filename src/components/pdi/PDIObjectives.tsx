@@ -46,9 +46,14 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
       setLoading(true);
       setError(null);
 
+      // Single query with joins to get objectives and related data
       const { data, error: fetchError } = await supabase
         .from('pdi_objectives')
-        .select('*')
+        .select(`
+          *,
+          competencies(nome),
+          mentor:profiles!pdi_objectives_mentor_id_fkey(nome)
+        `)
         .eq('colaborador_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -56,48 +61,26 @@ const PDIObjectives: React.FC<PDIObjectivesProps> = ({ onSelectObjective }) => {
         throw fetchError;
       }
 
-      // Enrich objectives with additional data
-      const enrichedObjectives = await Promise.all(
-        (data || []).map(async (objective) => {
-          const enriched: ExtendedPDIObjective = { ...objective };
+      // Get comment counts for all objectives in a single query
+      const objectiveIds = (data || []).map(obj => obj.id);
+      const { data: commentCounts } = await supabase
+        .from('pdi_comments')
+        .select('objective_id')
+        .in('objective_id', objectiveIds);
 
-          // Get competency name if linked
-          if (objective.competency_id) {
-            const { data: competency } = await supabase
-              .from('competencies')
-              .select('nome')
-              .eq('id', objective.competency_id)
-              .single();
-            
-            if (competency) {
-              enriched.competency_name = competency.nome;
-            }
-          }
+      // Count comments by objective
+      const commentCountsByObjective = (commentCounts || []).reduce((acc, comment) => {
+        acc[comment.objective_id] = (acc[comment.objective_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
-          // Get mentor name if assigned
-          if (objective.mentor_id) {
-            const { data: mentor } = await supabase
-              .from('profiles')
-              .select('nome')
-              .eq('user_id', objective.mentor_id)
-              .single();
-            
-            if (mentor) {
-              enriched.mentor_name = mentor.nome;
-            }
-          }
-
-          // Get comments count
-          const { count } = await supabase
-            .from('pdi_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('objective_id', objective.id);
-          
-          enriched.comments_count = count || 0;
-
-          return enriched;
-        })
-      );
+      // Process objectives with joined data
+      const enrichedObjectives: ExtendedPDIObjective[] = (data || []).map(objective => ({
+        ...objective,
+        competency_name: objective.competencies?.nome,
+        mentor_name: objective.mentor?.nome,
+        comments_count: commentCountsByObjective[objective.id] || 0
+      }));
 
       setObjectives(enrichedObjectives);
     } catch (err) {

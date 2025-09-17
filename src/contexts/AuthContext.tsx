@@ -255,7 +255,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         options: {
           data: {
             nome,
-            role
+            role,
+            user_role: role // Add role to JWT claims
           }
         }
       });

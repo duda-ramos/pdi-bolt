@@ -176,7 +176,8 @@ export const createUserProfile = async (userId: string, email: string, profileDa
         nome: profileData.nome,
         role: profileData.role,
         status: 'ativo',
-        data_admissao: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
+        data_admissao: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+        trilha_id: profileData.role === 'colaborador' ? '550e8400-e29b-41d4-a716-446655440001' : null // Default to Frontend track for colaborador
       })
       .select()
       .single()

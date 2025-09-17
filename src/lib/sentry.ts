@@ -118,6 +118,10 @@ export const initializeSentry = () => {
 };
 
 // Funções utilitárias para captura manual de erros
+export const isInitialized = (): boolean => {
+  return sentryInitialized;
+};
+
 export const captureError = (error: Error, context?: Record<string, any>) => {
   Sentry.withScope((scope) => {
     if (context) {

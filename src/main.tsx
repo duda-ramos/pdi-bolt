@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { initializeSentry } from './lib/sentry';
-import { setupGlobalErrorHandler, useErrorHandler } from './hooks/useErrorHandler';
+import { setupGlobalErrorHandler } from './hooks/useErrorHandler';
 
 // Inicializar Sentry antes de qualquer outra coisa
 const sentryInitialized = initializeSentry();
@@ -15,8 +15,7 @@ if (sentryInitialized) {
 }
 
 // Configurar handlers globais de erro
-const { logError } = useErrorHandler();
-setupGlobalErrorHandler(logError);
+setupGlobalErrorHandler();
 
 console.log('🎬 main.tsx: File loaded, starting application...');
 console.log('🎬 Application starting...');
